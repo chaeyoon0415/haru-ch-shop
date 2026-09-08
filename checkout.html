@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>결제 — 하루상점</title>
+<meta name="description" content="주문을 마칩니다">
+<link rel="stylesheet" href="assets/style.css">
+
+<!-- 태그 관리자 코드가 들어갈 자리 (머리) -->
+
+</head>
+<body>
+
+<!-- 태그 관리자 코드가 들어갈 자리 (몸통 맨 위) -->
+
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">하루상점</a>
+  <nav class="site">
+    <a href="index.html">상품</a>
+    <a href="about.html">가게 소개</a>
+    <a href="shipping.html">배송·교환</a>
+    <a href="cart.html">장바구니<span class="cart-count">0</span></a>
+  </nav>
+</div></header>
+
+<main><div class="wrap">
+  <h2>결제</h2>
+  <p class="lead">연습용 화면입니다. 실제로 돈이 나가지 않습니다.</p>
+  <form class="pay" id="pay-form">
+    <label for="buyer">받는 분</label>
+    <input id="buyer" name="buyer" required placeholder="이름">
+    <label for="addr">주소</label>
+    <input id="addr" name="addr" required placeholder="받으실 주소">
+    <label for="phone">연락처</label>
+    <input id="phone" name="phone" required placeholder="숫자만">
+    <div class="total">합계 <span id="pay-total">0원</span></div>
+    <button class="btn" type="submit">결제하기</button>
+  </form>
+</div></main>
+<footer class="site"><div class="wrap"></div></footer>
+<script src="assets/shop.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
