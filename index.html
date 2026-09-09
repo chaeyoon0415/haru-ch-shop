@@ -1,10 +1,11 @@
+```html
 <!doctype html>
 <html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>하루상점</title>
-<meta name="description" content="매일 쓰는 물건을 고릅니다">
+<title>CUT 주방 용품</title>
+<meta name="description" content="매일 쓰는 주방용품 다 여기서 구매하세요">
 <link rel="stylesheet" href="assets/style.css">
 
 <!-- 태그 관리자 코드가 들어갈 자리 (머리) -->
@@ -15,7 +16,7 @@
 <!-- 태그 관리자 코드가 들어갈 자리 (몸통 맨 위) -->
 
 <header class="site"><div class="wrap">
-  <a class="brand" href="index.html">하루상점</a>
+  <a class="brand" href="index.html">CUT 주방 용품</a>
   <nav class="site">
     <a href="index.html">상품</a>
     <a href="about.html">가게 소개</a>
@@ -25,17 +26,27 @@
 </div></header>
 
 <section class="hero"><div class="wrap">
-  <h1 id="hero-title">하루상점</h1>
-  <p id="hero-tagline">하루를 조금 낫게 만드는 물건을 고릅니다</p>
+  <span class="hero-badge">첫 자취 주방 준비</span>
+  <h1 id="hero-title">CUT 주방 용품</h1>
+  <p id="hero-tagline">매일 쓰는 주방용품 다 여기서 구매하세요</p>
+  <p class="hero-note">처음 자취하는 20대를 위해 꼭 필요한 주방용품만 가볍게 골랐어요.</p>
 </div></section>
 
 <main><div class="wrap">
-  <h2>오늘의 물건</h2>
-  <p class="lead">여섯 가지를 두고 있습니다. 하나씩 눌러 보세요.</p>
+  <div class="section-heading">
+    <div>
+      <h2>첫 자취 추천템</h2>
+      <p class="lead">처음 주방을 채울 때 필요한 것부터 골라보세요.</p>
+    </div>
+    <span class="section-chip">6가지 PICK</span>
+  </div>
   <div class="grid" id="product-list"></div>
 </div></main>
+
 <footer class="site"><div class="wrap"></div></footer>
+
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
+```
