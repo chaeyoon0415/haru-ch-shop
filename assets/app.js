@@ -192,6 +192,20 @@ function paintCheckout() {
     e.preventDefault();
 
     // ▼ 여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
+    window.dataLayer = window.dataLayer || [];
+    dataLayer.push({ ecommerce: null });
+    dataLayer.push({
+      event: "purchase",
+      ecommerce: {
+        transaction_id: "HARU-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+        currency: "KRW",
+        value: Cart.total(),
+        items: Cart.read().filter(i => findProduct(i.id)).map(i => {
+          const p = findProduct(i.id);
+          return { item_id: p.id, item_name: p.name, price: p.price, quantity: i.qty };
+        })
+      }
+    });
 
     Cart.clear();
     location.href = "done.html";
