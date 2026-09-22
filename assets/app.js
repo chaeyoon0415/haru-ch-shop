@@ -156,6 +156,8 @@ function paintCart() {
       }).join("")}
     </table>
     <div class="total">합계 ${won(Cart.total())}</div>
+    <p class="lead">배송비 안내: 5만 원 이상 구매 시 무료배송, 그 미만은 배송비 3,000원이 별도로 부과됩니다.</p>
+    <div class="total">배송비 포함 최종 결제금액 ${won(Cart.total() + (Cart.total() >= 50000 ? 0 : 3000))}</div>
     <a class="btn" href="checkout.html">결제하기</a>`;
 
   box.querySelectorAll(".drop").forEach(b => {
@@ -170,6 +172,10 @@ function paintCheckout() {
 
   const sum = document.querySelector("#pay-total");
   if (sum) sum.textContent = won(Cart.total());
+
+  const shippingFee = Cart.total() >= 50000 ? 0 : 3000;
+  const grandTotal = document.querySelector("#pay-grand-total");
+  if (grandTotal) grandTotal.textContent = won(Cart.total() + shippingFee);
 
   // ▼ 여기에 「결제 화면이 열렸다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
   const checkoutTotal = Cart.total();
