@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로그인 — 하루상점</title>
+<meta name="description" content="하루상점 회원 가입과 로그인">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .auth-page{max-width:460px;margin:0 auto;padding:72px 24px 96px}
+  .auth-card{padding:32px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+  .auth-card h1{margin:0 0 8px;font-size:30px;letter-spacing:-.04em}
+  .auth-card .lead{margin-bottom:28px}
+  .auth-field{display:grid;gap:7px;margin-bottom:18px;font-size:14px;font-weight:700}
+  .auth-field input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font:inherit}
+  .auth-field input:focus{outline:2px solid #b9cdbf;outline-offset:1px;border-color:var(--accent)}
+  .auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+  .auth-actions .logout{grid-column:1 / -1}
+  .auth-status{min-height:1.7em;margin:20px 0 0;color:var(--sub);font-size:14px}
+  .auth-status.error{color:#b42318}
+  @media (max-width:520px){.auth-page{padding-top:48px}.auth-card{padding:24px}}
+</style>
+</head>
+<body>
+<header class="site"><div class="wrap">
+  <a class="brand" href="index.html">하루상점</a>
+  <nav class="site"><a href="index.html">상품</a><a href="cart.html">장바구니</a></nav>
+</div></header>
+
+<main class="auth-page">
+  <section class="auth-card" aria-labelledby="auth-title">
+    <h1 id="auth-title">하루상점 계정</h1>
+    <p class="lead">이메일로 가입하거나 로그인하세요.</p>
+    <form id="auth-form">
+      <label class="auth-field" for="email">이메일
+        <input id="email" name="email" type="email" autocomplete="email" required>
+      </label>
+      <label class="auth-field" for="password">비밀번호
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <div class="auth-actions">
+        <button class="btn" id="signup" type="button">가입</button>
+        <button class="btn ghost" id="signin" type="button">로그인</button>
+        <button class="btn ghost logout" id="signout" type="button">로그아웃</button>
+      </div>
+    </form>
+    <p id="auth-status" class="auth-status" role="status" aria-live="polite"></p>
+  </section>
+</main>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDavrwZtFJrgJXWEe_GPlr4QHXpMlMBsvw",
+    authDomain: "haru-ch-shop.firebaseapp.com",
+    projectId: "haru-ch-shop",
+    storageBucket: "haru-ch-shop.firebasestorage.app",
+    messagingSenderId: "971703720070",
+    appId: "1:971703720070:web:df10e702482b8882475907"
+  };
+
+  const auth = getAuth(initializeApp(firebaseConfig));
+  const email = document.querySelector("#email");
+  const password = document.querySelector("#password");
+  const status = document.querySelector("#auth-status");
+
+  function showStatus(message, isError = false) {
+    status.textContent = message;
+    status.classList.toggle("error", isError);
+  }
+
+  function credentials() {
+    if (!email.reportValidity() || !password.reportValidity()) return null;
+    return { email: email.value, password: password.value };
+  }
+
+  async function run(action, successMessage) {
+    const input = credentials();
+    if (!input) return;
+    try {
+      await action(auth, input.email, input.password);
+      showStatus(successMessage);
+    } catch (error) {
+      showStatus(error.code, true);
+    }
+  }
+
+  document.querySelector("#signup").addEventListener("click", () => {
+    run(createUserWithEmailAndPassword, "가입되었습니다.");
+  });
+
+  document.querySelector("#signin").addEventListener("click", () => {
+    run(signInWithEmailAndPassword, "로그인되었습니다.");
+  });
+
+  document.querySelector("#signout").addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      showStatus("로그아웃되었습니다.");
+    } catch (error) {
+      showStatus(error.code, true);
+    }
+  });
+</script>
+</body>
+</html>
