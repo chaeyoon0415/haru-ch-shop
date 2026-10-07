@@ -24,6 +24,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .auth-field input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font:inherit}
   .auth-field input:focus{outline:2px solid #b9cdbf;outline-offset:1px;border-color:var(--accent)}
   .auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+  .auth-actions .password-reset{grid-column:2;font-size:14px;text-align:center}
   .auth-actions .auth-note{grid-column:1 / -1;margin:0;color:var(--sub);font-size:12px;line-height:1.5}
   .auth-actions .logout{grid-column:1 / -1}
   .auth-status{min-height:1.7em;margin:20px 0 0;color:var(--sub);font-size:14px}
@@ -55,6 +56,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="auth-actions">
         <button class="btn" id="signup" type="button">가입</button>
         <button class="btn ghost" id="signin" type="button">로그인</button>
+        <a class="password-reset" href="#" id="password-reset">비밀번호를 잊으셨나요?</a>
         <p class="auth-note">도서관이나 학교처럼 같이 쓰는 컴퓨터에서는, CUT주방용품을 다 보신 뒤 로그아웃을 눌러 주세요.</p>
         <button class="btn ghost logout" id="signout" type="button">로그아웃</button>
       </div>
@@ -66,6 +68,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script type="module">
   import {
     createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     sendEmailVerification,
     signOut
@@ -110,6 +113,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   document.querySelector("#signin").addEventListener("click", () => {
     run(signInWithEmailAndPassword, "로그인되었습니다.");
+  });
+
+  document.querySelector("#password-reset").addEventListener("click", async event => {
+    event.preventDefault();
+    if (!email.reportValidity()) return;
+    auth.languageCode = "ko";
+    try {
+      await sendPasswordResetEmail(auth, email.value);
+    } catch (error) {
+      if (error.code !== "auth/user-not-found") {
+        showStatus(error.code, true);
+        return;
+      }
+    }
+    showStatus("메일을 보냈습니다. 가입된 주소라면 곧 도착합니다.");
   });
 
   document.querySelector("#signout").addEventListener("click", async () => {
