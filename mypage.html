@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>주문 완료 — 하루상점</title>
-<meta name="description" content="주문이 접수되었습니다">
+<title>마이페이지 — 하루상점</title>
+<meta name="description" content="하루상점 마이페이지">
 <link rel="stylesheet" href="assets/style.css">
 
 <script src="assets/consent.js"></script>
@@ -17,7 +17,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
 </head>
 <body>
-
 <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5P374PG9"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -33,17 +32,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </nav>
 </div></header>
 
-<main><div class="wrap">
-  <h2>주문이 접수되었습니다</h2>
-  <div class="prose">
-    <p>연습용 주문이라 실제로 배송되지는 않습니다.</p>
-    <p>영업일 기준 이틀 안에 보내드리는 것이 원래 약속입니다.</p>
+<main data-auth-required hidden><div class="wrap">
+  <div class="mypage-card">
+    <h1>마이페이지</h1>
+    <p>로그인한 이메일</p>
+    <strong data-user-email></strong>
+    <button class="btn" type="button" data-mypage-signout>로그아웃</button>
   </div>
-  <a class="btn" href="index.html">계속 둘러보기</a>
 </div></main>
+
 <footer class="site"><div class="wrap"></div></footer>
+
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
-<script type="module" src="assets/auth.js"></script>
+<script type="module">
+  import { logoutUser } from "./assets/auth.js";
+
+  document.querySelector("[data-mypage-signout]").addEventListener("click", async () => {
+    await logoutUser();
+  });
+</script>
 </body>
 </html>

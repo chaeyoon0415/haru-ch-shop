@@ -37,7 +37,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 <header class="site"><div class="wrap">
   <a class="brand" href="index.html">하루상점</a>
-  <nav class="site"><a href="index.html">상품</a><a href="cart.html">장바구니</a></nav>
+  <nav class="site"><a href="index.html">상품</a><a href="cart.html">장바구니</a><span data-auth-menu></span></nav>
 </div></header>
 
 <main class="auth-page">
@@ -62,24 +62,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </main>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import {
-    getAuth,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDavrwZtFJrgJXWEe_GPlr4QHXpMlMBsvw",
-    authDomain: "haru-ch-shop.firebaseapp.com",
-    projectId: "haru-ch-shop",
-    storageBucket: "haru-ch-shop.firebasestorage.app",
-    messagingSenderId: "971703720070",
-    appId: "1:971703720070:web:df10e702482b8882475907"
-  };
-
-  const auth = getAuth(initializeApp(firebaseConfig));
+  import { auth } from "./assets/auth.js";
   const email = document.querySelector("#email");
   const password = document.querySelector("#password");
   const status = document.querySelector("#auth-status");

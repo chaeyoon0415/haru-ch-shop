@@ -76,6 +76,33 @@ nav.site a:hover{
   color:var(--accent);
 }
 
+.auth-menu{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.auth-email{
+  max-width:170px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--sub);
+}
+
+.auth-signout{
+  border:0;
+  padding:0;
+  background:transparent;
+  color:var(--sub);
+  font:inherit;
+  cursor:pointer;
+}
+
+.auth-signout:hover{
+  color:var(--accent);
+}
+
 .cart-count{
   display:inline-flex;
   align-items:center;
@@ -396,6 +423,29 @@ footer.site{
   padding:32px 0;
   color:var(--sub);
   font-size:13px;
+}
+
+.mypage-card{
+  max-width:480px;
+  padding:28px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:var(--card);
+}
+
+.mypage-card h1{
+  margin:0 0 20px;
+}
+
+.mypage-card p{
+  margin:0 0 4px;
+  color:var(--sub);
+  font-size:14px;
+}
+
+.mypage-card strong{
+  display:block;
+  margin-bottom:24px;
 }
 
 /* =========================
