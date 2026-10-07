@@ -37,6 +37,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <h1>마이페이지</h1>
     <p>로그인한 이메일</p>
     <strong data-user-email></strong>
+    <div data-email-verification hidden>
+      <p data-email-verification-message></p>
+      <button class="btn ghost" type="button" data-resend-verification>인증 메일 다시 보내기</button>
+      <p data-verification-status role="status" aria-live="polite"></p>
+    </div>
     <button class="btn" type="button" data-mypage-signout>로그아웃</button>
   </div>
 </div></main>
@@ -46,10 +51,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 <script type="module">
-  import { logoutUser } from "./assets/auth.js";
+  import { logoutUser, resendVerificationEmail } from "./assets/auth.js";
 
   document.querySelector("[data-mypage-signout]").addEventListener("click", async () => {
     await logoutUser();
+  });
+
+  document.querySelector("[data-resend-verification]").addEventListener("click", async event => {
+    const button = event.currentTarget;
+    const status = document.querySelector("[data-verification-status]");
+    button.disabled = true;
+    status.textContent = "";
+    try {
+      await resendVerificationEmail();
+      status.textContent = "인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.";
+    } catch (error) {
+      status.textContent = error.code === "auth/too-many-requests"
+        ? "잠시 뒤에 다시 눌러 주세요."
+        : error.code;
+    } finally {
+      button.disabled = false;
+    }
   });
 </script>
 </body>

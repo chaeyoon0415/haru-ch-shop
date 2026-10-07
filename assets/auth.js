@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDavrwZtFJrgJXWEe_GPlr4QHXpMlMBsvw",
@@ -59,7 +59,32 @@ export async function logoutUser() {
   }
 }
 
-onAuthStateChanged(auth, user => {
+export async function resendVerificationEmail() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("auth/user-not-found");
+  auth.languageCode = "ko";
+  await sendEmailVerification(user);
+}
+
+function renderEmailVerification(user) {
+  const section = document.querySelector("[data-email-verification]");
+  if (!section) return;
+
+  const message = section.querySelector("[data-email-verification-message]");
+  const sentAfterSignup = new URLSearchParams(location.search).get("verificationEmailSent") === "1";
+
+  if (user.emailVerified) {
+    section.hidden = true;
+    return;
+  }
+
+  message.textContent = sentAfterSignup
+    ? "인증 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요."
+    : "이메일 인증이 필요합니다.";
+  section.hidden = false;
+}
+
+onAuthStateChanged(auth, async user => {
   renderAuthMenu(user);
 
   if (isSigningOut) return;
@@ -70,8 +95,11 @@ onAuthStateChanged(auth, user => {
       location.replace("login.html?next=mypage.html");
       return;
     }
+    await user.reload();
+    user = auth.currentUser;
     const email = protectedPage.querySelector("[data-user-email]");
     if (email) email.textContent = user.email || "";
+    renderEmailVerification(user);
     protectedPage.hidden = false;
   }
 

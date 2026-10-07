@@ -67,6 +67,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    sendEmailVerification,
     signOut
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { auth } from "./assets/auth.js";
@@ -88,10 +89,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const input = credentials();
     if (!input) return;
     try {
-      await action(auth, input.email, input.password);
+      const credential = await action(auth, input.email, input.password);
       if (action === createUserWithEmailAndPassword) {
         window.dataLayer = window.dataLayer || [];
         dataLayer.push({ event: "sign_up", method: "email" });
+        auth.languageCode = "ko";
+        await sendEmailVerification(credential.user);
+        location.replace("mypage.html?verificationEmailSent=1");
+        return;
       }
       showStatus(successMessage);
     } catch (error) {
