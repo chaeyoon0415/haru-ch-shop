@@ -24,6 +24,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .auth-field input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font:inherit}
   .auth-field input:focus{outline:2px solid #b9cdbf;outline-offset:1px;border-color:var(--accent)}
   .auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+  .auth-actions .auth-note{grid-column:1 / -1;margin:0;color:var(--sub);font-size:12px;line-height:1.5}
   .auth-actions .logout{grid-column:1 / -1}
   .auth-status{min-height:1.7em;margin:20px 0 0;color:var(--sub);font-size:14px}
   .auth-status.error{color:#b42318}
@@ -54,6 +55,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="auth-actions">
         <button class="btn" id="signup" type="button">가입</button>
         <button class="btn ghost" id="signin" type="button">로그인</button>
+        <p class="auth-note">도서관이나 학교처럼 같이 쓰는 컴퓨터에서는, 달빛상회를 다 보신 뒤 로그아웃을 눌러 주세요.</p>
         <button class="btn ghost logout" id="signout" type="button">로그아웃</button>
       </div>
     </form>
