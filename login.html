@@ -83,6 +83,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     status.classList.toggle("error", isError);
   }
 
+  function authErrorMessage(code) {
+    const messages = {
+      "auth/invalid-credential": "로그인 정보가 맞지 않아요. 입력한 내용을 다시 확인해 주세요.",
+      "auth/email-already-in-use": "이미 가입된 이메일이에요. 새로 가입하지 않고 로그인할 수 있어요.",
+      "auth/weak-password": "비밀번호는 6자 이상으로 입력해 주세요.",
+      "auth/invalid-email": "이메일 형식을 확인해 주세요. ‘@’가 빠지지 않았는지 확인해 주세요."
+    };
+    return messages[code] ?? "문제가 생겼어요. 조금 뒤에 다시 시도해 주세요.";
+  }
+
   function credentials() {
     if (!email.reportValidity() || !password.reportValidity()) return null;
     return { email: email.value, password: password.value };
@@ -103,7 +113,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       }
       showStatus(successMessage);
     } catch (error) {
-      showStatus(error.code, true);
+      showStatus(authErrorMessage(error.code), true);
     }
   }
 
@@ -123,7 +133,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       await sendPasswordResetEmail(auth, email.value);
     } catch (error) {
       if (error.code !== "auth/user-not-found") {
-        showStatus(error.code, true);
+        showStatus(authErrorMessage(error.code), true);
         return;
       }
     }
@@ -135,7 +145,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       await signOut(auth);
       showStatus("로그아웃되었습니다.");
     } catch (error) {
-      showStatus(error.code, true);
+      showStatus(authErrorMessage(error.code), true);
     }
   });
 </script>
