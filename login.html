@@ -6,6 +6,15 @@
 <title>로그인 — 하루상점</title>
 <meta name="description" content="하루상점 회원 가입과 로그인">
 <link rel="stylesheet" href="assets/style.css">
+
+<script src="assets/consent.js"></script>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5P374PG9');</script>
+<!-- End Google Tag Manager -->
 <style>
   .auth-page{max-width:460px;margin:0 auto;padding:72px 24px 96px}
   .auth-card{padding:32px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
@@ -22,6 +31,10 @@
 </style>
 </head>
 <body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5P374PG9"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
 <header class="site"><div class="wrap">
   <a class="brand" href="index.html">하루상점</a>
   <nav class="site"><a href="index.html">상품</a><a href="cart.html">장바구니</a></nav>
@@ -86,6 +99,10 @@
     if (!input) return;
     try {
       await action(auth, input.email, input.password);
+      if (action === createUserWithEmailAndPassword) {
+        window.dataLayer = window.dataLayer || [];
+        dataLayer.push({ event: "sign_up", method: "email" });
+      }
       showStatus(successMessage);
     } catch (error) {
       showStatus(error.code, true);
