@@ -45,6 +45,16 @@ function renderAuthMenu(user) {
     logout.textContent = "로그아웃";
     logout.addEventListener("click", () => logoutUser());
 
+    if (user.photoURL) {
+      const photo = document.createElement("img");
+      photo.className = "auth-photo";
+      photo.src = user.photoURL;
+      photo.alt = "";
+      photo.referrerPolicy = "no-referrer";
+      photo.addEventListener("error", () => photo.remove());
+      menu.append(photo);
+    }
+
     menu.append(email, mypage, logout);
   });
 }

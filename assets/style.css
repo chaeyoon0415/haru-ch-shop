@@ -82,6 +82,14 @@ nav.site a:hover{
   gap:12px;
 }
 
+.auth-photo{
+  width:24px;
+  height:24px;
+  margin-right:-4px;
+  border-radius:50%;
+  object-fit:cover;
+}
+
 .auth-email{
   max-width:170px;
   overflow:hidden;
