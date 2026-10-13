@@ -1,4 +1,4 @@
-import { getFirestore, collection, doc, getDoc, getDocs, query, where, runTransaction, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, runTransaction, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { auth } from "./auth.js";
@@ -12,17 +12,22 @@ const SEED = { p2: [30, true], p3: [8, true], p4: [0, true], p5: [5, true], p6: 
 const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 const showError = e => { countBox.textContent = "상품을 읽지 못했습니다. " + errText(e); };
 
+// 숨기지 않은 상품만, 싼 것부터, 셋만 — 필터·정렬·개수 모두 Firestore 쿼리에서 한다
 async function loadList() {
   try {
-    const snap = await getDocs(query(collection(db, "products"), where("isVisible", "==", true)));
-    const order = PRODUCTS.map(p => p.id);
-    const items = snap.docs
-      .filter(d => order.includes(d.id))
-      .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
-      .map(d => ({ id: d.id, ...d.data() }));
-    paintList(items);
+    const snap = await getDocs(query(
+      collection(db, "products"),
+      where("isVisible", "==", true),
+      orderBy("price", "asc"),
+      limit(3)
+    ));
+    paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     countBox.textContent = readCountText(snap.size);
-  } catch (e) { showError(e); }
+  } catch (e) {
+    console.error(e);
+    document.querySelector("#product-list").textContent = "목록을 불러오지 못했습니다";
+    countBox.textContent = "";
+  }
 }
 
 async function loadDetail() {
