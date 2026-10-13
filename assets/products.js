@@ -21,7 +21,7 @@ let readTotal = 0;    // 이번 화면에서 읽은 문서 합계
 function listQuery(after) {
   const parts = [collection(db, "products"), where("isVisible", "==", true), orderBy("price", "asc")];
   if (after) parts.push(startAfter(after));
-  parts.push(limit(PAGE + 1));   // 하나 더 읽어 다음 장이 있는지 확인
+  parts.push(limit(PAGE));
   return query(...parts);
 }
 
@@ -29,12 +29,11 @@ async function loadList(more = false) {
   if (moreBtn) moreBtn.disabled = true;
   try {
     const snap = await getDocs(listQuery(more ? lastDoc : null));
-    const shown = snap.docs.slice(0, PAGE);
-    paintList(shown.map(d => ({ id: d.id, ...d.data() })), more);
+    paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })), more);
     readTotal = (more ? readTotal : 0) + snap.size;
-    if (shown.length) lastDoc = shown[shown.length - 1];
+    if (snap.size) lastDoc = snap.docs[snap.docs.length - 1];
     countBox.textContent = readCountText(readTotal);
-    if (moreBtn) moreBtn.hidden = snap.size <= PAGE;
+    if (moreBtn) moreBtn.hidden = snap.size < PAGE;
   } catch (e) {
     console.error(e);
     if (more) countBox.textContent = "더 불러오지 못했습니다. " + errText(e);
