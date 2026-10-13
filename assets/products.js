@@ -50,7 +50,48 @@ async function loadDetail() {
     const data = snap.exists() ? snap.data() : null;
     paintDetail(data && data.isVisible !== false ? { id: snap.id, ...data } : null);
     countBox.textContent = readCountText(snap.exists() ? 1 : 0);
+    if (data && data.isVisible !== false) setupOrder(snap.id);
   } catch (e) { showError(e); }
+}
+
+// 「바로 주문」: 재고 확인 · 주문 문서 쓰기 · 재고 차감을 한 트랜잭션으로
+function setupOrder(productId) {
+  const btn = document.querySelector("#order-now");
+  const msg = document.querySelector("#order-msg");
+  if (!btn || !msg) return;
+
+  btn.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user) { msg.textContent = "로그인이 필요합니다"; return; }
+    btn.disabled = true;
+    msg.textContent = "주문하는 중…";
+    try {
+      const pRef = doc(db, "products", productId);
+      const oRef = doc(collection(db, "orders"));   // 자동 ID
+      const outOfStock = await runTransaction(db, async tx => {
+        const pSnap = await tx.get(pRef);
+        const p = pSnap.exists() ? pSnap.data() : null;
+        if (!p || typeof p.stock !== "number" || p.stock < 1) return true;
+        tx.set(oRef, {
+          userId: user.uid,
+          items: [{ productId, name: p.name, price: p.price, quantity: 1 }],
+          totalPrice: p.price * 1,
+          status: "paid",
+          createdAt: serverTimestamp()
+        });
+        tx.update(pRef, { stock: p.stock - 1 });
+        return false;
+      });
+      if (outOfStock) { msg.textContent = "재고가 없습니다"; return; }
+      msg.textContent = "주문했습니다. (주문번호 " + oRef.id + ")";
+      const stockEl = document.querySelector("#product-detail .stock");
+      const cur = stockEl && stockEl.textContent.match(/\d+/);
+      if (cur) stockEl.textContent = stockText(Number(cur[0]) - 1);
+    } catch (e) {
+      console.error(e);
+      msg.textContent = "주문하지 못했습니다. " + errText(e);
+    } finally { btn.disabled = false; }
+  });
 }
 
 // 로그인한 사람에게만 「상품 올리기」 버튼을 보여 준다

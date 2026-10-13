@@ -121,6 +121,8 @@ function paintDetail(fsDoc) {
       <p class="stock">${stockText(p.stock)}</p>
       <div class="body prose">${p.detail.map(t => `<p>${t}</p>`).join("")}</div>
       <button class="btn" id="add-to-cart">장바구니에 담기</button>
+      <button class="btn" id="order-now" type="button">바로 주문</button>
+      <p class="order-msg" id="order-msg" role="status"></p>
     </div>`;
 
   window.dataLayer = window.dataLayer || [];
