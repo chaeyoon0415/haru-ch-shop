@@ -7,7 +7,7 @@ const db = getFirestore(auth.app);
 const countBox = document.querySelector("#read-count");
 
 // 올려 둘 재고와 보이기 값 (이름·가격·소개는 shop.js 값 그대로)
-const SEED = { p2: [30, true], p3: [8, true], p4: [0, true], p5: [5, false], p6: [40, true] };
+const SEED = { p2: [30, true], p3: [8, true], p4: [0, true], p5: [5, true], p6: [40, true] };
 
 const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 const showError = e => { countBox.textContent = "상품을 읽지 못했습니다. " + errText(e); };
