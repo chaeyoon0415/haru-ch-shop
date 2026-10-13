@@ -1,4 +1,4 @@
-import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, runTransaction, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, startAfter, runTransaction, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { auth } from "./auth.js";
@@ -13,21 +13,35 @@ const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.me
 const showError = e => { countBox.textContent = "상품을 읽지 못했습니다. " + errText(e); };
 
 // 숨기지 않은 상품만, 싼 것부터, 셋만 — 필터·정렬·개수 모두 Firestore 쿼리에서 한다
-async function loadList() {
+const PAGE = 3;
+const moreBtn = document.querySelector("#load-more");
+let lastDoc = null;   // 지금 보이는 마지막 상품 문서
+let readTotal = 0;    // 이번 화면에서 읽은 문서 합계
+
+function listQuery(after) {
+  const parts = [collection(db, "products"), where("isVisible", "==", true), orderBy("price", "asc")];
+  if (after) parts.push(startAfter(after));
+  parts.push(limit(PAGE));
+  return query(...parts);
+}
+
+async function loadList(more = false) {
+  if (moreBtn) moreBtn.disabled = true;
   try {
-    const snap = await getDocs(query(
-      collection(db, "products"),
-      where("isVisible", "==", true),
-      orderBy("price", "asc"),
-      limit(3)
-    ));
-    paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    countBox.textContent = readCountText(snap.size);
+    const snap = await getDocs(listQuery(more ? lastDoc : null));
+    paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })), more);
+    readTotal = (more ? readTotal : 0) + snap.size;
+    if (snap.size) lastDoc = snap.docs[snap.docs.length - 1];
+    countBox.textContent = readCountText(readTotal);
+    if (moreBtn) moreBtn.hidden = snap.size < PAGE;
   } catch (e) {
     console.error(e);
-    document.querySelector("#product-list").textContent = "목록을 불러오지 못했습니다";
-    countBox.textContent = "";
-  }
+    if (more) countBox.textContent = "더 불러오지 못했습니다. " + errText(e);
+    else {
+      document.querySelector("#product-list").textContent = "목록을 불러오지 못했습니다";
+      countBox.textContent = "";
+    }
+  } finally { if (moreBtn) moreBtn.disabled = false; }
 }
 
 async function loadDetail() {
@@ -73,5 +87,9 @@ function setupUpload() {
   });
 }
 
-if (document.querySelector("#product-list")) { loadList(); setupUpload(); }
+if (document.querySelector("#product-list")) {
+  loadList();
+  setupUpload();
+  if (moreBtn) moreBtn.addEventListener("click", () => loadList(true));
+}
 else if (document.querySelector("#product-detail")) loadDetail();

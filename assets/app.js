@@ -84,14 +84,14 @@ const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const stockText = n => (typeof n !== "number" ? "" : n > 0 ? "재고 " + n + "개" : "품절");
 const readCountText = n => "이번 화면에서 읽은 문서 " + n + "장";
 
-function paintList(items) {
+function paintList(items, append = false) {
   const box = document.querySelector("#product-list");
   if (!box) return;
 
   document.querySelector("#hero-title").textContent = SHOP.name;
   document.querySelector("#hero-tagline").textContent = SHOP.tagline;
 
-  box.innerHTML = items.map(p => `
+  const html = items.map(p => `
     <a class="card" href="product.html?id=${esc(p.id)}">
       <div class="thumb">${findProduct(p.id).emoji}</div>
       <h3>${esc(p.name)}</h3>
@@ -99,6 +99,8 @@ function paintList(items) {
       <div class="price">${won(p.price)}</div>
       <p class="stock">${stockText(p.stock)}</p>
     </a>`).join("");
+  if (append) box.insertAdjacentHTML("beforeend", html);
+  else box.innerHTML = html;
 }
 
 /* --- 상품 상세 --- */
