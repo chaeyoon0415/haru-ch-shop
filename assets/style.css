@@ -572,3 +572,9 @@ footer.site{
     height:160px;
   }
 }
+
+/* 재고·읽은 문서 수·상품 올리기 */
+.stock{margin:4px 0 0;font-size:.9rem;color:#666}
+.read-count{margin:16px 0;font-size:.9rem;color:#666}
+#upload-box{margin:12px 0}
+#upload-result{margin:8px 0 0;word-break:break-all}

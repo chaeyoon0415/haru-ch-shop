@@ -79,36 +79,44 @@ function paintChrome() {
 }
 
 /* --- 상품 목록 --- */
-function paintList() {
+// 이름·가격·한 줄 소개·재고는 Firestore(products.js 가 읽어 옴)에서 받는다.
+const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const stockText = n => (typeof n !== "number" ? "" : n > 0 ? "재고 " + n + "개" : "품절");
+const readCountText = n => "이번 화면에서 읽은 문서 " + n + "장";
+
+function paintList(items) {
   const box = document.querySelector("#product-list");
   if (!box) return;
 
   document.querySelector("#hero-title").textContent = SHOP.name;
   document.querySelector("#hero-tagline").textContent = SHOP.tagline;
 
-  box.innerHTML = PRODUCTS.map(p => `
-    <a class="card" href="product.html?id=${p.id}">
-      <div class="thumb">${p.emoji}</div>
-      <h3>${p.name}</h3>
-      <p class="sum">${p.summary}</p>
+  box.innerHTML = items.map(p => `
+    <a class="card" href="product.html?id=${esc(p.id)}">
+      <div class="thumb">${findProduct(p.id).emoji}</div>
+      <h3>${esc(p.name)}</h3>
+      <p class="sum">${esc(p.summary)}</p>
       <div class="price">${won(p.price)}</div>
+      <p class="stock">${stockText(p.stock)}</p>
     </a>`).join("");
 }
 
 /* --- 상품 상세 --- */
-function paintDetail() {
+function paintDetail(fsDoc) {
   const box = document.querySelector("#product-detail");
   if (!box) return;
 
-  const p = findProduct(qs("id"));
+  const local = findProduct(qs("id"));
+  const p = local && fsDoc ? { ...local, ...fsDoc } : null;
   if (!p) { box.innerHTML = '<p class="empty">그런 상품이 없습니다.</p>'; return; }
 
   document.title = p.name + " — " + SHOP.name;
   box.innerHTML = `
     <div class="thumb">${p.emoji}</div>
     <div>
-      <h1>${p.name}</h1>
+      <h1>${esc(p.name)}</h1>
       <div class="price">${won(p.price)}</div>
+      <p class="stock">${stockText(p.stock)}</p>
       <div class="body prose">${p.detail.map(t => `<p>${t}</p>`).join("")}</div>
       <button class="btn" id="add-to-cart">장바구니에 담기</button>
     </div>`;
@@ -229,8 +237,7 @@ function paintProse() {
 
 document.addEventListener("DOMContentLoaded", () => {
   paintChrome();
-  paintList();
-  paintDetail();
+  // 목록·상세는 Firestore 에서 읽은 뒤 products.js 가 paintList / paintDetail 을 부른다
   paintCart();
   paintCheckout();
   paintProse();
