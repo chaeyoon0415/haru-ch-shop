@@ -18,7 +18,7 @@ async function loadList() {
     const snap = await getDocs(query(
       collection(db, "products"),
       where("isVisible", "==", true),
-      orderBy("price", "asc"),
+      orderBy("price", "desc"),
       limit(3)
     ));
     paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
