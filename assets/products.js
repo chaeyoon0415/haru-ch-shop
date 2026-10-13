@@ -12,8 +12,8 @@ const SEED = { p2: [30, true], p3: [8, true], p4: [0, true], p5: [5, true], p6: 
 const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 const showError = e => { countBox.textContent = "상품을 읽지 못했습니다. " + errText(e); };
 
-// 숨기지 않은 상품만, 싼 것부터, 둘만 — 필터·정렬·개수 모두 Firestore 쿼리에서 한다
-const PAGE = 2;
+// 숨기지 않은 상품만, 싼 것부터, 셋만 — 필터·정렬·개수 모두 Firestore 쿼리에서 한다
+const PAGE = 3;
 const moreBtn = document.querySelector("#load-more");
 let lastDoc = null;   // 지금 보이는 마지막 상품 문서
 let readTotal = 0;    // 이번 화면에서 읽은 문서 합계
