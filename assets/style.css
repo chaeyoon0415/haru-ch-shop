@@ -586,3 +586,8 @@ footer.site{
 .orders-list p{margin:0 0 4px;font-size:14px}
 .orders-stopped-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .orders-stopped-row p{margin:0;font-size:14px}
+.order-status{font-weight:600}
+.order-steps{display:flex;gap:6px;list-style:none;margin:8px 0 0;padding:0}
+.order-steps li{flex:1;padding:6px 4px;border-top:4px solid var(--line);color:var(--sub);font-size:12px;text-align:center;line-height:1.3}
+.order-steps li.done{border-top-color:var(--accent)}
+.order-steps li.current{border-top-color:var(--accent);background:var(--accent-light);color:var(--accent);font-weight:700}
