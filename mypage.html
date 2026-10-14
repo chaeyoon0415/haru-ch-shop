@@ -48,6 +48,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <h2>내 주문</h2>
     <p data-orders-empty role="status" aria-live="polite">주문을 불러오는 중…</p>
     <ul data-orders-list class="orders-list"></ul>
+    <p data-orders-stopped role="status" aria-live="polite" hidden>모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.</p>
   </section>
 </div></main>
 
@@ -65,6 +66,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const db = getFirestore(auth.app);
   const ordersList = document.querySelector("[data-orders-list]");
   const ordersEmpty = document.querySelector("[data-orders-empty]");
+  const ordersStopped = document.querySelector("[data-orders-stopped]");
+  const FINAL_STATUSES = ["delivered", "canceled"];
   let ordersUnsubscribe = null;
   let listeningUid = null;
 
@@ -104,6 +107,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       orders.sort((a, b) => millis(b) - millis(a));   // 최신순은 받은 뒤 화면에서
       paintOrders(orders);
+      // 주문이 있고 전부 끝났으면(delivered · canceled) 더 바뀔 일이 없으니 그만 듣는다
+      if (ordersUnsubscribe && orders.length && orders.every(o => FINAL_STATUSES.includes(o.status))) {
+        ordersUnsubscribe();
+        ordersUnsubscribe = null;
+        ordersStopped.hidden = false;
+        console.log("[그만 듣기] 모든 주문이 delivered 또는 canceled 라서 주문 듣기를 멈췄습니다.");
+      }
     }, error => {
       console.log("[주문 알림] 주문을 듣지 못했습니다: " + (error.code || error.message));
       ordersEmpty.textContent = "주문을 불러오지 못했습니다. " + (error.code || error.message);
@@ -113,8 +123,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   onAuthStateChanged(auth, user => {
     if (user) {
       listenOrders(user.uid);
-    } else if (ordersUnsubscribe) {
-      ordersUnsubscribe();
+    } else {
+      if (ordersUnsubscribe) ordersUnsubscribe();
       ordersUnsubscribe = null;
       listeningUid = null;
     }
