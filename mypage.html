@@ -63,7 +63,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/app.js"></script>
 <script type="module">
   import { auth, logoutUser, resendVerificationEmail } from "./assets/auth.js";
-  import { getFirestore, collection, query, where, onSnapshot, getDocs }
+  import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, updateDoc }
     from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
@@ -118,7 +118,51 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return ol;
   }
 
+  // 「주문 취소」: paid 인 주문에만. 저장 중인 주문 · 실패 문구가 나온 주문은 다시 그려도 기억한다
+  const CANCEL_FAILED_TEXT = "주문이 취소되지 않았어요. 이 주문은 지금 취소 전 상태 그대로예요. 주문 취소를 한 번 더 눌러 주세요.";
+  const cancelingIds = new Set();
+  const cancelFailedIds = new Set();
+  let shownOrders = [];
+
+  async function cancelOrder(orderId) {
+    cancelFailedIds.delete(orderId);
+    cancelingIds.add(orderId);
+    paintOrders(shownOrders);
+    try {
+      await updateDoc(doc(db, "orders", orderId), { status: "canceled" });   // status 만 고친다
+      cancelingIds.delete(orderId);
+    } catch (error) {
+      console.log("[주문 취소 실패] " + (error.code || error.message));
+      cancelingIds.delete(orderId);
+      cancelFailedIds.add(orderId);
+      // 화면을 누르기 전(paid)으로 되돌린다
+      shownOrders = shownOrders.map(o => (o.id === orderId ? { ...o, status: "paid" } : o));
+      paintOrders(shownOrders);
+    }
+  }
+
+  function cancelControls(orderId) {
+    const box = document.createElement("div");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "btn ghost";
+    const saving = cancelingIds.has(orderId);
+    button.disabled = saving;
+    button.textContent = saving ? "저장 중" : "주문 취소";
+    button.addEventListener("click", () => cancelOrder(orderId));
+    box.append(button);
+    if (cancelFailedIds.has(orderId)) {
+      const fail = document.createElement("p");
+      fail.className = "order-cancel-error";
+      fail.setAttribute("role", "alert");
+      fail.textContent = CANCEL_FAILED_TEXT;
+      box.append(fail);
+    }
+    return box;
+  }
+
   function paintOrders(orders) {
+    shownOrders = orders;
     ordersList.textContent = "";
     ordersEmpty.textContent = orders.length ? "" : "주문이 없습니다.";
     orders.forEach(o => {
@@ -140,6 +184,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       state.textContent = "상태: " + view.text;
       li.append(state);
       if (view.step >= 0) li.append(stepLine(view.step));
+      if (o.status === "paid") li.append(cancelControls(o.id));
       ordersList.append(li);
     });
   }
