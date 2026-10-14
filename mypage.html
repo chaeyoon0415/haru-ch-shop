@@ -32,6 +32,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </nav>
 </div></header>
 
+<p class="order-toast" data-order-toast role="status" aria-live="polite" hidden>주문 상태가 바뀌었습니다</p>
+
 <main data-auth-required hidden><div class="wrap">
   <div class="mypage-card">
     <h1>마이페이지</h1>
@@ -72,6 +74,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const ordersStopped = document.querySelector("[data-orders-stopped]");
   const ordersRefresh = document.querySelector("[data-orders-refresh]");
   const FINAL_STATUSES = ["delivered", "canceled"];
+  const orderToast = document.querySelector("[data-order-toast]");
+  let toastTimer = null;
+  let seenStatus = new Map();   // 주문 문서 id -> 지금까지 본 status
   let ordersUnsubscribe = null;
   let listeningUid = null;
 
@@ -145,15 +150,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     .map(d => ({ id: d.id, ...d.data() }))
     .sort((a, b) => millis(b) - millis(a));   // 최신순은 받은 뒤 화면에서
 
+  function showStatusToast() {
+    orderToast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { orderToast.hidden = true; }, 4000);
+  }
+
   function listenOrders(uid) {
     if (listeningUid === uid) return;
     if (ordersUnsubscribe) ordersUnsubscribe();
     listeningUid = uid;
+    seenStatus = new Map();
     ordersRefresh.hidden = true;   // 듣는 동안에는 「다시 확인」을 보이지 않는다
     ordersUnsubscribe = onSnapshot(ordersQuery(uid), snap => {
       console.log("[주문 알림] 주문 " + snap.size + "건 (서버 확인 전 변경 " + (snap.metadata.hasPendingWrites ? "있음" : "없음") + ")");
       const orders = toOrders(snap);
       paintOrders(orders);
+      // 처음 받는 알림은 전부 added 라서 띄우지 않고, 이미 본 주문의 status 가 modified 로 바뀐 때만 띄운다
+      const statusChanged = snap.docChanges().some(c =>
+        c.type === "modified" && seenStatus.has(c.doc.id) && seenStatus.get(c.doc.id) !== c.doc.data().status);
+      seenStatus = new Map(snap.docs.map(d => [d.id, d.data().status]));
+      if (statusChanged) showStatusToast();
       // 주문이 있고 전부 끝났으면(delivered · canceled) 더 바뀔 일이 없으니 그만 듣는다
       if (ordersUnsubscribe && orders.length && orders.every(o => FINAL_STATUSES.includes(o.status))) {
         ordersUnsubscribe();
