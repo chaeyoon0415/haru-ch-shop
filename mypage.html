@@ -44,6 +44,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <button class="btn" type="button" data-mypage-signout>로그아웃</button>
   </div>
+  <section class="orders">
+    <h2>내 주문</h2>
+    <p data-orders-empty role="status" aria-live="polite">주문을 불러오는 중…</p>
+    <ul data-orders-list class="orders-list"></ul>
+  </section>
 </div></main>
 
 <footer class="site"><div class="wrap"></div></footer>
@@ -51,7 +56,69 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 <script type="module">
-  import { logoutUser, resendVerificationEmail } from "./assets/auth.js";
+  import { auth, logoutUser, resendVerificationEmail } from "./assets/auth.js";
+  import { getFirestore, collection, query, where, onSnapshot }
+    from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+  // 내 주문: 로그인한 사람의 UID가 확인된 뒤 한 번만 듣는다
+  const db = getFirestore(auth.app);
+  const ordersList = document.querySelector("[data-orders-list]");
+  const ordersEmpty = document.querySelector("[data-orders-empty]");
+  let ordersUnsubscribe = null;
+  let listeningUid = null;
+
+  const millis = o => (o.createdAt && o.createdAt.toMillis ? o.createdAt.toMillis() : Infinity);
+  const dateText = o => (o.createdAt && o.createdAt.toDate
+    ? o.createdAt.toDate().toLocaleString("ko-KR")
+    : "처리 중");
+
+  function paintOrders(orders) {
+    ordersList.textContent = "";
+    ordersEmpty.textContent = orders.length ? "" : "주문이 없습니다.";
+    orders.forEach(o => {
+      const li = document.createElement("li");
+      const names = Array.isArray(o.items) ? o.items.map(i => i.name).join(", ") : "";
+      const rows = [
+        ["주문한 날", dateText(o)],
+        ["상품", names],
+        ["합계", Number(o.totalPrice).toLocaleString("ko-KR") + "원"],
+        ["상태", String(o.status)]
+      ];
+      rows.forEach(([label, value]) => {
+        const p = document.createElement("p");
+        p.textContent = label + ": " + value;
+        li.append(p);
+      });
+      ordersList.append(li);
+    });
+  }
+
+  function listenOrders(uid) {
+    if (listeningUid === uid) return;
+    if (ordersUnsubscribe) ordersUnsubscribe();
+    listeningUid = uid;
+    const q = query(collection(db, "orders"), where("userId", "==", uid));
+    ordersUnsubscribe = onSnapshot(q, snap => {
+      console.log("[주문 알림] 주문 " + snap.size + "건 (서버 확인 전 변경 " + (snap.metadata.hasPendingWrites ? "있음" : "없음") + ")");
+      const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      orders.sort((a, b) => millis(b) - millis(a));   // 최신순은 받은 뒤 화면에서
+      paintOrders(orders);
+    }, error => {
+      console.log("[주문 알림] 주문을 듣지 못했습니다: " + (error.code || error.message));
+      ordersEmpty.textContent = "주문을 불러오지 못했습니다. " + (error.code || error.message);
+    });
+  }
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      listenOrders(user.uid);
+    } else if (ordersUnsubscribe) {
+      ordersUnsubscribe();
+      ordersUnsubscribe = null;
+      listeningUid = null;
+    }
+  });
 
   document.querySelector("[data-mypage-signout]").addEventListener("click", async () => {
     await logoutUser();
