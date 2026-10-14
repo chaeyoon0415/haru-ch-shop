@@ -48,7 +48,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <h2>내 주문</h2>
     <p data-orders-empty role="status" aria-live="polite">주문을 불러오는 중…</p>
     <ul data-orders-list class="orders-list"></ul>
-    <p data-orders-stopped role="status" aria-live="polite" hidden>모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.</p>
+    <div class="orders-stopped-row">
+      <p data-orders-stopped role="status" aria-live="polite" hidden>모든 주문이 끝나 실시간 확인을 멈췄습니다. 새로 고치면 다시 확인합니다.</p>
+      <button class="btn ghost" type="button" data-orders-refresh hidden>다시 확인</button>
+    </div>
   </section>
 </div></main>
 
@@ -58,7 +61,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script src="assets/app.js"></script>
 <script type="module">
   import { auth, logoutUser, resendVerificationEmail } from "./assets/auth.js";
-  import { getFirestore, collection, query, where, onSnapshot }
+  import { getFirestore, collection, query, where, onSnapshot, getDocs }
     from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
@@ -67,6 +70,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const ordersList = document.querySelector("[data-orders-list]");
   const ordersEmpty = document.querySelector("[data-orders-empty]");
   const ordersStopped = document.querySelector("[data-orders-stopped]");
+  const ordersRefresh = document.querySelector("[data-orders-refresh]");
   const FINAL_STATUSES = ["delivered", "canceled"];
   let ordersUnsubscribe = null;
   let listeningUid = null;
@@ -97,21 +101,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
   }
 
+  // 내 주문만 고르는 쿼리 (듣기와 다시 확인이 같이 쓴다)
+  const ordersQuery = uid => query(collection(db, "orders"), where("userId", "==", uid));
+  const toOrders = snap => snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => millis(b) - millis(a));   // 최신순은 받은 뒤 화면에서
+
   function listenOrders(uid) {
     if (listeningUid === uid) return;
     if (ordersUnsubscribe) ordersUnsubscribe();
     listeningUid = uid;
-    const q = query(collection(db, "orders"), where("userId", "==", uid));
-    ordersUnsubscribe = onSnapshot(q, snap => {
+    ordersRefresh.hidden = true;   // 듣는 동안에는 「다시 확인」을 보이지 않는다
+    ordersUnsubscribe = onSnapshot(ordersQuery(uid), snap => {
       console.log("[주문 알림] 주문 " + snap.size + "건 (서버 확인 전 변경 " + (snap.metadata.hasPendingWrites ? "있음" : "없음") + ")");
-      const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      orders.sort((a, b) => millis(b) - millis(a));   // 최신순은 받은 뒤 화면에서
+      const orders = toOrders(snap);
       paintOrders(orders);
       // 주문이 있고 전부 끝났으면(delivered · canceled) 더 바뀔 일이 없으니 그만 듣는다
       if (ordersUnsubscribe && orders.length && orders.every(o => FINAL_STATUSES.includes(o.status))) {
         ordersUnsubscribe();
         ordersUnsubscribe = null;
         ordersStopped.hidden = false;
+        ordersRefresh.hidden = false;
         console.log("[그만 듣기] 모든 주문이 delivered 또는 canceled 라서 주문 듣기를 멈췄습니다.");
       }
     }, error => {
@@ -120,6 +130,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
   }
 
+  // 「다시 확인」: 한 번만 읽고 끝낸다 (리스너는 다시 걸지 않는다)
+  ordersRefresh.addEventListener("click", async () => {
+    if (!listeningUid) return;
+    ordersRefresh.disabled = true;
+    try {
+      paintOrders(toOrders(await getDocs(ordersQuery(listeningUid))));
+    } catch (error) {
+      ordersEmpty.textContent = "주문을 불러오지 못했습니다. " + (error.code || error.message);
+    } finally {
+      ordersRefresh.disabled = false;
+    }
+  });
+
   onAuthStateChanged(auth, user => {
     if (user) {
       listenOrders(user.uid);
@@ -127,6 +150,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (ordersUnsubscribe) ordersUnsubscribe();
       ordersUnsubscribe = null;
       listeningUid = null;
+      ordersRefresh.hidden = true;
     }
   });
 

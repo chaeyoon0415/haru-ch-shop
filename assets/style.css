@@ -584,3 +584,5 @@ footer.site{
 .orders-list{list-style:none;margin:0;padding:0}
 .orders-list li{padding:14px 16px;margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 .orders-list p{margin:0 0 4px;font-size:14px}
+.orders-stopped-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.orders-stopped-row p{margin:0;font-size:14px}
