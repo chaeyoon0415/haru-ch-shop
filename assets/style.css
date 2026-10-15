@@ -595,3 +595,6 @@ footer.site{
 .order-toast[hidden]{display:none}
 .order-cancel-error{margin:6px 0 0;color:#b3261e;font-size:13px}
 .orders-list li .btn{margin-top:10px}
+
+/* 상품 사진 */
+.card .thumb img{width:100%;height:100%;object-fit:cover;border-radius:12px}

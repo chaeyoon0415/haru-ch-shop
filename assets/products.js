@@ -1,9 +1,11 @@
 import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, startAfter, runTransaction, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { auth } from "./auth.js";
 
 const db = getFirestore(auth.app);
+const storage = getStorage(auth.app);
 const countBox = document.querySelector("#read-count");
 
 // 올려 둘 재고와 보이기 값 (이름·가격·소개는 shop.js 값 그대로)
@@ -25,11 +27,29 @@ function listQuery(after) {
   return query(...parts);
 }
 
+// imagePath 가 있는 상품만 사진으로 바꾼다. 문서를 읽는 것이 아니므로 읽은 문서 수에 더하지 않는다
+function paintImages(items) {
+  items.filter(p => p.imagePath).forEach(async p => {
+    try {
+      const url = await getDownloadURL(ref(storage, p.imagePath));
+      const thumb = document.querySelector('a.card[href="product.html?id=' + encodeURIComponent(p.id) + '"] .thumb');
+      if (!thumb) return;
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = p.name || "";
+      thumb.textContent = "";
+      thumb.append(img);
+    } catch (e) { console.error(e); }   // 실패하면 그림 글자 그대로
+  });
+}
+
 async function loadList(more = false) {
   if (moreBtn) moreBtn.disabled = true;
   try {
     const snap = await getDocs(listQuery(more ? lastDoc : null));
-    paintList(snap.docs.map(d => ({ id: d.id, ...d.data() })), more);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    paintList(items, more);
+    paintImages(items);
     readTotal = (more ? readTotal : 0) + snap.size;
     if (snap.size) lastDoc = snap.docs[snap.docs.length - 1];
     countBox.textContent = readCountText(readTotal);
