@@ -64,13 +64,28 @@ async function loadList(more = false) {
   } finally { if (moreBtn) moreBtn.disabled = false; }
 }
 
+// 상세 화면 사진: imagePath 가 있을 때만 바꾼다. 문서를 읽는 것이 아니므로 읽은 문서 수는 그대로
+async function paintDetailImage(data) {
+  if (!data.imagePath) return;
+  try {
+    const url = await getDownloadURL(ref(storage, data.imagePath));
+    const thumb = document.querySelector("#product-detail .thumb");
+    if (!thumb) return;
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = data.name || "";
+    thumb.textContent = "";
+    thumb.append(img);
+  } catch (e) { console.error(e); }   // 실패하면 그림 글자 그대로
+}
+
 async function loadDetail() {
   try {
     const snap = await getDoc(doc(db, "products", qs("id") || "_"));
     const data = snap.exists() ? snap.data() : null;
     paintDetail(data && data.isVisible !== false ? { id: snap.id, ...data } : null);
     countBox.textContent = readCountText(snap.exists() ? 1 : 0);
-    if (data && data.isVisible !== false) setupOrder(snap.id);
+    if (data && data.isVisible !== false) { setupOrder(snap.id); paintDetailImage(data); }
   } catch (e) { showError(e); }
 }
 

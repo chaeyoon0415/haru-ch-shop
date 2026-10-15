@@ -598,3 +598,4 @@ footer.site{
 
 /* 상품 사진 */
 .card .thumb img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.detail .thumb img{width:100%;height:100%;object-fit:cover;border-radius:16px}
