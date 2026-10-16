@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>규칙 확인 — CUT주방용품</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="assets/style.css">
+
+<script src="assets/consent.js"></script>
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5P374PG9');</script>
+<!-- End Google Tag Manager -->
+<style>
+  .rc-page{max-width:720px;margin:0 auto;padding:72px 24px 96px}
+  .rc-page h1{margin:0 0 16px;font-size:26px;letter-spacing:-.04em}
+  .rc-who{margin:0 0 24px;font-size:14px;line-height:1.7;word-break:break-all}
+  .rc-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+  .rc-out{margin:16px 0 0;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+  .rc-summary{margin:20px 0 8px;font-size:14px;font-weight:700}
+  .rc-table{width:100%;border-collapse:collapse;font-size:13px}
+  .rc-table th,.rc-table td{border:1px solid var(--line);padding:6px 8px;text-align:left;word-break:break-all}
+  .rc-table-wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5P374PG9"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<main class="rc-page">
+  <p id="login-needed" hidden>로그인한 뒤에 쓸 수 있습니다. <a href="login.html">로그인</a></p>
+  <section id="rc-main" hidden>
+    <p class="rc-who" id="rc-who"></p>
+    <h1>규칙 확인</h1>
+    <div class="rc-actions">
+      <button class="btn" id="btn-read-orders" type="button">주문 전체 읽기</button>
+      <button class="btn" id="btn-fix-order" type="button">내 주문 금액 고치기</button>
+      <button class="btn" id="btn-zero-price" type="button">상품 가격 0원으로</button>
+    </div>
+    <div id="rc-out" class="rc-out" role="status" aria-live="polite"></div>
+  </section>
+</main>
+
+<script type="module" src="assets/rules-check.js"></script>
+</body>
+</html>
