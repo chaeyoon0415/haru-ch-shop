@@ -1,2 +1,4 @@
 .claude/
 .vercel
+node_modules/
+*-debug.log
