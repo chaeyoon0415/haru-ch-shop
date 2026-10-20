@@ -161,6 +161,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return box;
   }
 
+  // 결제 금액 = 상품 합계 + 배송비 (5만 원 이상 무료, 미만 3,000원). 저장된 값은 바꾸지 않고 화면에서만 더한다
+  const itemsSum = o => (Array.isArray(o.items)
+    ? o.items.reduce((sum, i) => sum + Number(i.price) * Number(i.quantity), 0)
+    : Number(o.totalPrice));
+  const shippingFeeOf = o => (itemsSum(o) >= 50000 ? 0 : 3000);
+  const paidTotal = o => itemsSum(o) + shippingFeeOf(o);
+
   function paintOrders(orders) {
     shownOrders = orders;
     ordersList.textContent = "";
@@ -171,7 +178,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const rows = [
         ["주문한 날", dateText(o)],
         ["상품", names],
-        ["합계", Number(o.totalPrice).toLocaleString("ko-KR") + "원"],
+        ["합계", paidTotal(o).toLocaleString("ko-KR") + "원"],
       ];
       const view = statusView(o.status);
       const rowLine = (label, value, className) => {
@@ -186,7 +193,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         p.append(l, v);
         return p;
       };
-      rows.forEach(([label, value]) => li.append(rowLine(label, value, label === "합계" ? "order-total" : "")));
+      rows.forEach(([label, value]) => {
+        const line = rowLine(label, value, label === "합계" ? "order-total" : "");
+        if (label === "합계") {
+          const note = document.createElement("small");
+          note.className = "order-fee-note";
+          const fee = shippingFeeOf(o);
+          note.textContent = fee ? "배송비 " + fee.toLocaleString("ko-KR") + "원 포함" : "무료배송 (배송비 0원)";
+          line.querySelector(".order-value").append(note);
+        }
+        li.append(line);
+      });
       li.append(rowLine("상태", view.text, "order-status"));
       if (view.step >= 0) li.append(stepLine(view.step));
       if (o.status === "paid") li.append(cancelControls(o.id));

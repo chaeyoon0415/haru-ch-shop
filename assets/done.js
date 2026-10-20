@@ -27,7 +27,7 @@ if (code) {
       await setDoc(doc(getFirestore(auth.app), "orders", paymentId), {
         userId: user.uid,
         items: items,
-        totalPrice: total,
+        totalPrice: total + (total >= 50000 ? 0 : 3000),   // 배송비 포함 결제 금액
         status: "paid",
         createdAt: serverTimestamp(),
         paymentId: paymentId

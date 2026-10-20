@@ -110,7 +110,7 @@ function setupOrder(productId) {
         tx.set(oRef, {
           userId: user.uid,
           items: [{ productId, name: p.name, price: p.price, quantity: 1 }],
-          totalPrice: p.price * 1,
+          totalPrice: p.price * 1 + (p.price * 1 >= 50000 ? 0 : 3000),   // 배송비 포함
           status: "paid",
           createdAt: serverTimestamp()
         });

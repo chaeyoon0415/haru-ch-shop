@@ -589,6 +589,7 @@ footer.site{
 .order-label{flex:0 0 4.8em;color:var(--sub);font-size:13px}
 .order-value{flex:1;min-width:0;overflow-wrap:anywhere}
 .order-total .order-value{font-size:18px;font-weight:700}
+.order-fee-note{display:block;margin-top:2px;color:var(--sub);font-size:12px;font-weight:400}
 .orders-list .order-status{border-bottom:0;padding-bottom:4px}
 .orders-list .order-status .order-value{display:inline-block;flex:0 1 auto;padding:3px 12px;border-radius:999px;background:var(--accent-light);color:var(--accent);font-weight:700;font-size:14px}
 .orders-stopped-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
