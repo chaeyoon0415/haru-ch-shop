@@ -174,15 +174,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         ["합계", Number(o.totalPrice).toLocaleString("ko-KR") + "원"],
       ];
       const view = statusView(o.status);
-      rows.forEach(([label, value]) => {
+      const rowLine = (label, value, className) => {
         const p = document.createElement("p");
-        p.textContent = label + ": " + value;
-        li.append(p);
-      });
-      const state = document.createElement("p");
-      state.className = "order-status";
-      state.textContent = "상태: " + view.text;
-      li.append(state);
+        p.className = "order-row" + (className ? " " + className : "");
+        const l = document.createElement("span");
+        l.className = "order-label";
+        l.textContent = label;
+        const v = document.createElement("span");
+        v.className = "order-value";
+        v.textContent = value;
+        p.append(l, v);
+        return p;
+      };
+      rows.forEach(([label, value]) => li.append(rowLine(label, value, label === "합계" ? "order-total" : "")));
+      li.append(rowLine("상태", view.text, "order-status"));
       if (view.step >= 0) li.append(stepLine(view.step));
       if (o.status === "paid") li.append(cancelControls(o.id));
       ordersList.append(li);
