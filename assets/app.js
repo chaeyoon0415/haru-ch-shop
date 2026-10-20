@@ -225,8 +225,32 @@ function paintCheckout() {
       }
     });
 
-    Cart.clear();
-    location.href = "done.html";
+    // 포트원 결제창(테스트). 주문 문서 · 장바구니 비우기 · 화면 이동은 아직 하지 않는다
+    const paymentId = "HARU-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+    const lines = Cart.read().filter(i => findProduct(i.id));
+    if (!lines.length) return;
+    const orderName = findProduct(lines[0].id).name + (lines.length > 1 ? " 외 " + (lines.length - 1) + "건" : "");
+
+    let box = document.querySelector("#pay-result");
+    if (!box) {
+      box = document.createElement("pre");
+      box.id = "pay-result";
+      box.style.whiteSpace = "pre-wrap";
+      form.appendChild(box);
+    }
+    box.textContent = "paymentId: " + paymentId;
+
+    PortOne.requestPayment({
+      storeId: "store-78f23d3f-f909-47e0-9fe6-048909d77c96",
+      channelKey: "channel-key-9c93becb-a2fe-4e44-a4d5-0dae650ce6b0",
+      paymentId: paymentId,
+      orderName: orderName,
+      totalAmount: Cart.total(),
+      currency: "CURRENCY_KRW",
+      payMethod: "CARD"
+    }).then(response => {
+      box.textContent = "paymentId: " + paymentId + "\n" + JSON.stringify(response);
+    });
   });
 }
 
