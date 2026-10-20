@@ -245,7 +245,7 @@ function paintCheckout() {
       channelKey: "channel-key-9c93becb-a2fe-4e44-a4d5-0dae650ce6b0",
       paymentId: paymentId,
       orderName: orderName,
-      totalAmount: Cart.total(),
+      totalAmount: Cart.total() + shippingFee,
       currency: "CURRENCY_KRW",
       payMethod: "CARD"
     }).then(response => {
