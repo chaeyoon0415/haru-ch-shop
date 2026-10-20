@@ -209,36 +209,13 @@ function paintCheckout() {
   form.addEventListener("submit", e => {
     e.preventDefault();
 
-    // ▼ 여기에 「결제를 마쳤다」를 알리는 코드가 들어갑니다 (뒤 수업에서)
-    window.dataLayer = window.dataLayer || [];
-    dataLayer.push({ ecommerce: null });
-    dataLayer.push({
-      event: "purchase",
-      ecommerce: {
-        transaction_id: "HARU-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
-        currency: "KRW",
-        value: Cart.total(),
-        items: Cart.read().filter(i => findProduct(i.id)).map(i => {
-          const p = findProduct(i.id);
-          return { item_id: p.id, item_name: p.name, price: p.price, quantity: i.qty };
-        })
-      }
-    });
-
-    // 포트원 결제창(테스트). 주문 문서 · 장바구니 비우기 · 화면 이동은 아직 하지 않는다
+    // 포트원 결제창(테스트). 결과는 주문 완료 화면(done.html)이 받아서 처리한다
     const paymentId = "HARU-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
     const lines = Cart.read().filter(i => findProduct(i.id));
     if (!lines.length) return;
     const orderName = findProduct(lines[0].id).name + (lines.length > 1 ? " 외 " + (lines.length - 1) + "건" : "");
 
-    let box = document.querySelector("#pay-result");
-    if (!box) {
-      box = document.createElement("pre");
-      box.id = "pay-result";
-      box.style.whiteSpace = "pre-wrap";
-      form.appendChild(box);
-    }
-    box.textContent = "paymentId: " + paymentId;
+    const redirectUrl = location.origin + "/done.html";
 
     PortOne.requestPayment({
       storeId: "store-78f23d3f-f909-47e0-9fe6-048909d77c96",
@@ -247,9 +224,17 @@ function paintCheckout() {
       orderName: orderName,
       totalAmount: Cart.total() + shippingFee,
       currency: "CURRENCY_KRW",
-      payMethod: "CARD"
+      payMethod: "CARD",
+      customData: { items: Cart.read() },
+      redirectUrl: redirectUrl
     }).then(response => {
-      box.textContent = "paymentId: " + paymentId + "\n" + JSON.stringify(response);
+      // PC: 휴대폰 리다이렉트와 같은 모양(paymentId · code · message)으로 넘긴다
+      const q = new URLSearchParams();
+      ["paymentId", "code", "message"].forEach(k => {
+        if (response && response[k] != null) q.set(k, response[k]);
+      });
+      if (!q.has("paymentId")) q.set("paymentId", paymentId);
+      location.href = redirectUrl + "?" + q.toString();
     });
   });
 }
