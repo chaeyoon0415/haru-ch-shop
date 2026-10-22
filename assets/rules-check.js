@@ -1,5 +1,7 @@
 import { getFirestore, collection, doc, getDocs, updateDoc, query, where, limit }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFunctions, httpsCallable }
+  from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { auth } from "./auth.js";
 
@@ -12,6 +14,10 @@ const out = document.querySelector("#rc-out");
 const btnRead = document.querySelector("#btn-read-orders");
 const btnFix = document.querySelector("#btn-fix-order");
 const btnZero = document.querySelector("#btn-zero-price");
+const btnAsk = document.querySelector("#btn-ask-total");
+const btnAskPrice = document.querySelector("#btn-ask-total-price");
+
+const calcOrderTotal = httpsCallable(getFunctions(auth.app, "us-central1"), "calcOrderTotal");
 
 const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 
@@ -80,4 +86,14 @@ btnFix.addEventListener("click", () => run(btnFix, async () => {
 btnZero.addEventListener("click", () => run(btnZero, async () => {
   await updateDoc(doc(db, "products", "p1"), { price: 0 });
   out.textContent = "성공했습니다. products/p1 의 price 를 0 으로 바꿨습니다.";
+}));
+
+btnAsk.addEventListener("click", () => run(btnAsk, async () => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 2 });
+  out.textContent = "totalPrice: " + res.data.totalPrice;
+}));
+
+btnAskPrice.addEventListener("click", () => run(btnAskPrice, async () => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 2, price: 100 });
+  out.textContent = "totalPrice: " + res.data.totalPrice;
 }));
