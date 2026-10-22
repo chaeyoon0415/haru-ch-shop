@@ -60,9 +60,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <footer class="site"><div class="wrap"></div></footer>
 
+<button class="bot-fab" id="bot-fab" type="button" aria-label="챗봇 열기">💬</button>
+<section class="bot-panel" id="bot-panel" aria-label="상품 챗봇" hidden>
+  <div class="bot-head"><strong>상품 물어보기</strong><button type="button" id="bot-close" aria-label="닫기">×</button></div>
+  <div class="bot-log" id="bot-log" role="log" aria-live="polite"></div>
+  <form class="bot-form" id="bot-form" hidden>
+    <input id="bot-input" type="text" maxlength="300" placeholder="질문을 입력하세요" autocomplete="off">
+    <button class="btn" type="submit">보내기</button>
+  </form>
+</section>
+
 <script src="assets/shop.js"></script>
 <script src="assets/app.js"></script>
 <script type="module" src="assets/auth.js"></script>
 <script type="module" src="assets/products.js"></script>
+<script type="module" src="assets/chatbot.js"></script>
 </body>
 </html>
