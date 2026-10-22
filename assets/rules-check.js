@@ -16,6 +16,7 @@ const btnFix = document.querySelector("#btn-fix-order");
 const btnZero = document.querySelector("#btn-zero-price");
 const btnAsk = document.querySelector("#btn-ask-total");
 const btnAskPrice = document.querySelector("#btn-ask-total-price");
+const btnAskZero = document.querySelector("#btn-ask-zero");
 
 const calcOrderTotal = httpsCallable(getFunctions(auth.app, "us-central1"), "calcOrderTotal");
 
@@ -95,5 +96,10 @@ btnAsk.addEventListener("click", () => run(btnAsk, async () => {
 
 btnAskPrice.addEventListener("click", () => run(btnAskPrice, async () => {
   const res = await calcOrderTotal({ productId: "p1", quantity: 2, price: 100 });
+  out.textContent = "totalPrice: " + res.data.totalPrice;
+}));
+
+btnAskZero.addEventListener("click", () => run(btnAskZero, async () => {
+  const res = await calcOrderTotal({ productId: "p1", quantity: 0 });
   out.textContent = "totalPrice: " + res.data.totalPrice;
 }));
