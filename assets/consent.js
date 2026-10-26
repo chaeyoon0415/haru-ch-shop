@@ -89,3 +89,12 @@
     }
   });
 })();
+
+/* 웹 푸시 알림용 서비스 워커 등록 — 등록만 하며, 알림 허락 요청·토큰 발급은 하지 않습니다. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/firebase-messaging-sw.js").catch(function (err) {
+      console.warn("푸시 서비스 워커 등록 실패", err);
+    });
+  });
+}
