@@ -119,6 +119,7 @@ function setupOrder(productId) {
       });
       if (outOfStock) { msg.textContent = "재고가 없습니다"; return; }
       msg.textContent = "주문했습니다. (주문번호 " + oRef.id + ")";
+      if (window.HaruPush) HaruPush.mount(msg);
       const stockEl = document.querySelector("#product-detail .stock");
       const cur = stockEl && stockEl.textContent.match(/\d+/);
       if (cur) stockEl.textContent = stockText(Number(cur[0]) - 1);

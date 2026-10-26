@@ -49,6 +49,7 @@ if (code) {
       });
       document.querySelector("#done-pid").textContent = "결제 ID: " + paymentId;
       document.querySelector("#done-ok").hidden = false;
+      if (window.HaruPush) HaruPush.mount(document.querySelector("#done-ok .prose"));
     } catch (e) {
       console.error(e);
       msg.textContent = "주문을 저장하지 못했습니다. " + errText(e);
