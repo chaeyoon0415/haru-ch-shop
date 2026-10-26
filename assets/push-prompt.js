@@ -2,7 +2,7 @@
    주문을 마친 손님에게만 「배송이 출발하면 알려 드릴까요?」 카드를 보여 줍니다.
    쓰는 곳: 주문 완료 화면(done.js) · 상품 상세 「주문했습니다」 아래(products.js)
    알림 허락 창은 「알림 받기」 단추를 누른 처리 안에서만 띄우고,
-   알림 받을 주소(토큰)는 아직 받지 않습니다.
+   granted 가 되면 알림 받을 주소(토큰) 저장은 push-token.js 가 맡습니다.
    =========================================================== */
 (function () {
   const BOX_CLASS = "push-prompt";
@@ -43,6 +43,7 @@
       // 손님이 단추를 누른 이 처리 안에서만 허락 창을 띄운다
       Notification.requestPermission().then(function (result) {
         console.log("알림 허락 결과: " + result);   // granted · denied · default
+        if (result === "granted" && window.HaruPushToken) HaruPushToken.register();
         if (result === "granted" || result === "denied") mount(anchor);
       });
     });

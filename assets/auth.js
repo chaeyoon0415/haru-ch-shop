@@ -118,3 +118,6 @@ onAuthStateChanged(auth, async user => {
     if (next) location.replace(next);
   }
 });
+
+// 알림 받을 주소(토큰) 저장: 화면을 열 때마다 확인 (push-token.js)
+import("./push-token.js").catch(() => {});
