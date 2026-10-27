@@ -48,3 +48,8 @@ test("손님이 남의 주문을 읽는다", async () => {
   const 사람 = testEnv.authenticatedContext("cust01");
   await assertFails(getDoc(doc(사람.firestore(), "orders/o1")));
 });
+
+test("직원이 남의 주문을 읽는다", async () => {
+  const staff = testEnv.authenticatedContext("staff01", { role: "staff" });
+  await assertSucceeds(getDoc(doc(staff.firestore(), "orders/o1")));
+});
