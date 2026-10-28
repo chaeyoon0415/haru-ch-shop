@@ -94,6 +94,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <select id="ad-sort">
           <option value="stock">재고 적은 순</option>
           <option value="name">이름순</option>
+          <option value="updated">최근에 고친 순</option>
         </select>
       </div>
       <p id="ad-count" class="ad-count"></p>
@@ -258,8 +259,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const saveFields = async (fields) => {
       errorEl.textContent = "";
       try {
-        await updateDoc(ref, fields);
-        Object.assign(data, fields);
+        await updateDoc(ref, { ...fields, updatedAt: serverTimestamp() });
+        Object.assign(data, fields, { updatedAt: new Date() });   // 화면 정렬용 (서버 시각이 아직 없으니 임시)
         return true;
       } catch (e) {
         errorEl.textContent = errText(e);
@@ -384,9 +385,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
     const stockOf = tr => (typeof tr.productData.stock === "number" ? tr.productData.stock : Infinity);
     const nameOf = tr => String(tr.productData.name ?? "");
-    shown.sort(sortSelect.value === "name"
-      ? (a, b) => nameOf(a).localeCompare(nameOf(b), "ko")
-      : (a, b) => stockOf(a) - stockOf(b));
+    const updatedOf = tr => {
+      const u = tr.productData.updatedAt;
+      const t = u && (typeof u.toMillis === "function" ? u.toMillis() : u instanceof Date ? u.getTime() : NaN);
+      return Number.isFinite(t) ? t : -Infinity;   // updatedAt 이 없으면 맨 아래
+    };
+    const by = {
+      name: (a, b) => nameOf(a).localeCompare(nameOf(b), "ko"),
+      updated: (a, b) => (updatedOf(a) === updatedOf(b) ? 0 : updatedOf(a) < updatedOf(b) ? 1 : -1),
+      stock: (a, b) => stockOf(a) - stockOf(b)
+    };
+    shown.sort(by[sortSelect.value] || by.stock);
     rows.forEach(tr => { tr.hidden = !shown.includes(tr); });
     shown.forEach(tr => tbody.append(tr));   // 순서만 바꾼다
     countEl.textContent = "지금 보이는 상품 " + shown.length + "개 / 전체 " + rows.length + "개";
@@ -441,13 +450,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           summary: document.querySelector("#new-summary").value,
           stock,
           isVisible: false,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         });
         pendingId = created.id;
       }
       if (file) {
         const path = await uploadPhoto(pendingId, file, newProgress);
-        await updateDoc(doc(db, "products", pendingId), { imagePath: path });
+        await updateDoc(doc(db, "products", pendingId), { imagePath: path, updatedAt: serverTimestamp() });
       }
       pendingId = null;
       newForm.reset();
