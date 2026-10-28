@@ -93,7 +93,7 @@ function paintList(items, append = false) {
 
   const html = items.map(p => `
     <a class="card" href="product.html?id=${esc(p.id)}">
-      <div class="thumb">${findProduct(p.id).emoji}</div>
+      <div class="thumb">${(findProduct(p.id) || {}).emoji ?? "🍽️"}</div>
       <h3>${esc(p.name)}</h3>
       <p class="sum">${esc(p.summary)}</p>
       <div class="price">${won(p.price)}</div>
@@ -109,17 +109,17 @@ function paintDetail(fsDoc) {
   if (!box) return;
 
   const local = findProduct(qs("id"));
-  const p = local && fsDoc ? { ...local, ...fsDoc } : null;
+  const p = fsDoc ? { ...local, ...fsDoc } : null;
   if (!p) { box.innerHTML = '<p class="empty">그런 상품이 없습니다.</p>'; return; }
 
   document.title = p.name + " — " + SHOP.name;
   box.innerHTML = `
-    <div class="thumb">${p.emoji}</div>
+    <div class="thumb">${p.emoji ?? "🍽️"}</div>
     <div>
       <h1>${esc(p.name)}</h1>
       <div class="price">${won(p.price)}</div>
       <p class="stock">${stockText(p.stock)}</p>
-      <div class="body prose">${p.detail.map(t => `<p>${t}</p>`).join("")}</div>
+      <div class="body prose">${(p.detail || [esc(p.summary)]).map(t => `<p>${t}</p>`).join("")}</div>
       <button class="btn" id="add-to-cart">장바구니에 담기</button>
       <button class="btn" id="order-now" type="button">바로 주문</button>
       <p class="order-msg" id="order-msg" role="status"></p>
