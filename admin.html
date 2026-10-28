@@ -36,6 +36,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-error{margin:12px 0 0;color:#b42318;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
   .ad-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
   .ad-progress{margin:4px 0 0;font-size:13px}
+  .ad-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+  .ad-tools input,.ad-tools select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  .ad-tools .btn.on{outline:2px solid currentColor}
+  .ad-count{margin:0 0 8px;font-size:14px}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
 </head>
@@ -76,6 +80,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <p id="new-error" class="ad-row-error"></p>
       </form>
       <p id="ad-products-error" class="ad-row-error"></p>
+      <div class="ad-tools">
+        <button class="btn on" type="button" data-filter="all">전체</button>
+        <button class="btn ghost" type="button" data-filter="soldout">품절만</button>
+        <button class="btn ghost" type="button" data-filter="hidden">숨김만</button>
+        <input id="ad-search" type="search" placeholder="이름 검색">
+        <select id="ad-sort">
+          <option value="stock">재고 적은 순</option>
+          <option value="name">이름순</option>
+        </select>
+      </div>
+      <p id="ad-count" class="ad-count"></p>
       <div class="ad-table-wrap">
         <table class="ad-table">
           <thead><tr><th>사진</th><th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th></tr></thead>
@@ -342,15 +357,53 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     };
 
     draw();
+    tr.productData = data;   // 필터 · 검색 · 정렬이 지금 값을 읽는 용도
     return tr;
   }
+
+  // ---- 필터 · 검색 · 정렬: 한 번 읽어 둔 rows 에서 브라우저가 한다 (Firestore 에 다시 묻지 않는다) ----
+  let rows = [];
+  let filterMode = "all";
+  const searchInput = document.querySelector("#ad-search");
+  const sortSelect = document.querySelector("#ad-sort");
+  const countEl = document.querySelector("#ad-count");
+
+  function applyView() {
+    const q = searchInput.value.trim().toLowerCase();
+    const shown = rows.filter(tr => {
+      const d = tr.productData;
+      if (filterMode === "soldout" && d.stock !== 0) return false;
+      if (filterMode === "hidden" && d.isVisible !== false) return false;
+      return !q || String(d.name ?? "").toLowerCase().includes(q);
+    });
+    const stockOf = tr => (typeof tr.productData.stock === "number" ? tr.productData.stock : Infinity);
+    const nameOf = tr => String(tr.productData.name ?? "");
+    shown.sort(sortSelect.value === "name"
+      ? (a, b) => nameOf(a).localeCompare(nameOf(b), "ko")
+      : (a, b) => stockOf(a) - stockOf(b));
+    rows.forEach(tr => { tr.hidden = !shown.includes(tr); });
+    shown.forEach(tr => tbody.append(tr));   // 순서만 바꾼다
+    countEl.textContent = "지금 보이는 상품 " + shown.length + "개 / 전체 " + rows.length + "개";
+  }
+
+  document.querySelectorAll("[data-filter]").forEach(btn => btn.addEventListener("click", () => {
+    filterMode = btn.dataset.filter;
+    document.querySelectorAll("[data-filter]").forEach(b => {
+      b.classList.toggle("on", b === btn);
+      b.classList.toggle("ghost", b !== btn);
+    });
+    applyView();
+  }));
+  searchInput.addEventListener("input", applyView);
+  sortSelect.addEventListener("change", applyView);
 
   async function loadProducts() {
     listError.textContent = "";
     try {
       const snap = await getDocs(collection(db, "products"));
       tbody.textContent = "";
-      snap.forEach(d => tbody.append(renderRow(d)));
+      rows = snap.docs.map(renderRow);
+      applyView();
     } catch (e) {
       productsLoaded = false;
       listError.textContent = errText(e);
