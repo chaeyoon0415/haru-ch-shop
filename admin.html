@@ -19,6 +19,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-page{max-width:560px;margin:0 auto;padding:72px 24px 96px}
   .ad-page h1{margin:0 0 16px;font-size:26px;letter-spacing:-.04em}
   .ad-result{margin:0 0 16px;font-size:16px;font-weight:700;line-height:1.6}
+  .ad-info{margin:0 0 16px;font-size:14px;line-height:1.7}
+  .ad-info p{margin:0}
   .ad-error{margin:12px 0 0;color:#b42318;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
@@ -35,6 +37,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <p id="ad-login" hidden>로그인이 필요합니다 <a href="/login.html">로그인</a></p>
   <section id="ad-main" hidden>
     <p id="ad-result" class="ad-result" role="status" aria-live="polite"></p>
+    <div id="ad-info" class="ad-info" hidden>
+      <p>로그인 : <span id="ad-email"></span></p>
+      <p>토큰을 받은 시각 : <span id="ad-issued"></span></p>
+    </div>
     <div>
       <button class="btn" id="ad-grant" type="button" hidden>주인 명찰 받기</button>
     </div>
@@ -67,6 +73,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const loginNeeded = document.querySelector("#ad-login");
   const main = document.querySelector("#ad-main");
   const result = document.querySelector("#ad-result");
+  const info = document.querySelector("#ad-info");
+  const emailEl = document.querySelector("#ad-email");
+  const issuedEl = document.querySelector("#ad-issued");
   const errorBox = document.querySelector("#ad-error");
   const grantBtn = document.querySelector("#ad-grant");
   const recheckBtn = document.querySelector("#ad-recheck");
@@ -80,11 +89,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     loginNeeded.hidden = !!user;
     main.hidden = !user;
     if (!user) return;
-    const { claims } = await user.getIdTokenResult(forceRefresh);
+    const { claims, issuedAtTime } = await user.getIdTokenResult(forceRefresh);
     const role = claims.role;
     const isStaff = role === "staff" || role === "admin";
     result.textContent = isStaff ? "관리자: " + role : "권한이 없습니다";
     grantBtn.hidden = isStaff;
+    info.hidden = !isStaff;
+    emailEl.textContent = user.email || "";
+    issuedEl.textContent = new Date(issuedAtTime).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
   }
 
   async function safeJudge(forceRefresh) {
