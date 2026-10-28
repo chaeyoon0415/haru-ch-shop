@@ -515,6 +515,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   // ---- 최근 활동: 함수가 남기는 adminLogs 를 읽기만 한다 ----
   const logsBody = document.querySelector("#ad-logs-body");
   const logsError = document.querySelector("#ad-logs-error");
+  const KEY_LABELS = { deletedAt: "내림 표시", isVisible: "노출", stock: "재고", price: "가격", name: "이름", summary: "설명", imagePath: "사진" };
   async function loadLogs() {
     logsError.textContent = "";
     try {
@@ -527,7 +528,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           ? l.at.toDate().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false }) : "";
         const tr = document.createElement("tr");
         tr.append(cell(when), cell(found ? (found.productData.name ?? "") : (l.productId ?? "")),
-          cell(l.action ?? ""), cell(Array.isArray(l.changedKeys) ? l.changedKeys.join(", ") : ""));
+          cell(l.action ?? ""), cell(Array.isArray(l.changedKeys) ? l.changedKeys.map(k => (Object.hasOwn(KEY_LABELS, k) ? KEY_LABELS[k] : k)).join(", ") : ""));
         logsBody.append(tr);
       });
     } catch (e) { logsError.textContent = errText(e); }
