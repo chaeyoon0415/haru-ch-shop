@@ -21,6 +21,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-result{margin:0 0 16px;font-size:16px;font-weight:700;line-height:1.6}
   .ad-info{margin:0 0 16px;font-size:14px;line-height:1.7}
   .ad-info p{margin:0}
+  .ad-page{max-width:960px}
+  .ad-products{margin-top:32px}
+  .ad-products h2{margin:0 0 12px;font-size:20px}
+  .ad-form{display:grid;gap:8px;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .ad-form label{display:grid;gap:4px;font-size:13px;font-weight:700}
+  .ad-form input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  .ad-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .ad-table{width:100%;border-collapse:collapse;font-size:13px}
+  .ad-table th,.ad-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  .ad-table td.id{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
+  .ad-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .ad-row-error{margin:6px 0 0;color:#b42318;white-space:pre-wrap;word-break:break-all}
   .ad-error{margin:12px 0 0;color:#b42318;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
@@ -48,12 +60,32 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="ad-actions">
       <button class="btn ghost" id="ad-recheck" type="button">다시 확인</button>
     </div>
+    <section id="ad-products" class="ad-products" hidden>
+      <h2>상품</h2>
+      <button class="btn" id="ad-new-btn" type="button">새 상품</button>
+      <form id="ad-new-form" class="ad-form" hidden>
+        <label>name <input id="new-name" type="text" required></label>
+        <label>price <input id="new-price" type="number" step="any" required></label>
+        <label>summary <input id="new-summary" type="text"></label>
+        <label>stock <input id="new-stock" type="number" step="1" required></label>
+        <div><button class="btn" type="submit">저장</button></div>
+        <p id="new-error" class="ad-row-error"></p>
+      </form>
+      <p id="ad-products-error" class="ad-row-error"></p>
+      <div class="ad-table-wrap">
+        <table class="ad-table">
+          <thead><tr><th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th></tr></thead>
+          <tbody id="ad-tbody"></tbody>
+        </table>
+      </div>
+    </section>
   </section>
 </main>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 
   const firebaseConfig = {
@@ -69,6 +101,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const auth = getAuth(app);
   const grantOwnerRole = httpsCallable(getFunctions(app, "us-central1"), "grantOwnerRole");
 
+  const db = getFirestore(app);
   const loading = document.querySelector("#ad-loading");
   const loginNeeded = document.querySelector("#ad-login");
   const main = document.querySelector("#ad-main");
@@ -80,6 +113,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const grantBtn = document.querySelector("#ad-grant");
   const recheckBtn = document.querySelector("#ad-recheck");
 
+  const productsBox = document.querySelector("#ad-products");
+  let productsLoaded = false;
   const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 
   // 로그인 토큰의 커스텀 클레임 role 로만 판단한다 (forceRefresh 이면 토큰을 새로 받는다)
@@ -94,6 +129,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const isStaff = role === "staff" || role === "admin";
     result.textContent = isStaff ? "관리자: " + role : "권한이 없습니다";
     grantBtn.hidden = isStaff;
+    productsBox.hidden = !isStaff;
+    if (isStaff && !productsLoaded) { productsLoaded = true; loadProducts(); }
     info.hidden = !isStaff;
     emailEl.textContent = user.email || "";
     issuedEl.textContent = new Date(issuedAtTime).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false });
@@ -131,6 +168,162 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     errorBox.textContent = "";
     await safeJudge(true);
     recheckBtn.disabled = false;
+  });
+
+  // ---- 상품 표 (staff / admin 에게만 보인다) ----
+  const tbody = document.querySelector("#ad-tbody");
+  const listError = document.querySelector("#ad-products-error");
+  const newForm = document.querySelector("#ad-new-form");
+  const newError = document.querySelector("#new-error");
+
+  function cell(text, cls) {
+    const td = document.createElement("td");
+    if (cls) td.className = cls;
+    td.textContent = text;
+    return td;
+  }
+
+  function checkbox(checked, onChange) {
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = checked;
+    input.addEventListener("change", () => onChange(input));
+    return input;
+  }
+
+  function parseNumber(text) {
+    const trimmed = String(text).trim();
+    return trimmed === "" ? NaN : Number(trimmed);
+  }
+
+  function renderRow(snap) {
+    const data = snap.data();
+    const ref = doc(db, "products", snap.id);
+    const tr = document.createElement("tr");
+    const errorEl = document.createElement("p");
+    errorEl.className = "ad-row-error";
+
+    const saveFields = async (fields) => {
+      errorEl.textContent = "";
+      try {
+        await updateDoc(ref, fields);
+        Object.assign(data, fields);
+        return true;
+      } catch (e) {
+        errorEl.textContent = errText(e);
+        return false;
+      }
+    };
+
+    const draw = () => {
+      tr.textContent = "";
+      const soldOut = checkbox(data.stock === 0, async input => {
+        input.disabled = true;
+        if (input.checked) {
+          if (!await saveFields({ stock: 0 })) input.checked = false;
+        } else {
+          const answer = prompt("재고 숫자를 넣어 주세요 (1 이상 정수)");
+          const n = answer === null ? NaN : parseNumber(answer);
+          if (!Number.isInteger(n) || n < 1) {
+            if (answer !== null) errorEl.textContent = "재고는 1 이상 정수여야 합니다";
+            input.checked = true;
+          } else if (!await saveFields({ stock: n })) {
+            input.checked = true;
+          }
+        }
+        draw();
+      });
+      const visible = checkbox(data.isVisible === true, async input => {
+        input.disabled = true;
+        const want = input.checked;
+        if (!await saveFields({ isVisible: want })) input.checked = !want;
+        input.disabled = false;
+      });
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "btn ghost";
+      editBtn.textContent = "고치기";
+      editBtn.addEventListener("click", () => edit());
+      const last = document.createElement("td");
+      last.append(editBtn, errorEl);
+      const soldTd = document.createElement("td"); soldTd.append(soldOut);
+      const visTd = document.createElement("td"); visTd.append(visible);
+      tr.append(cell(snap.id, "id"), cell(data.name ?? ""), cell(String(data.price ?? ""), "num"),
+        cell(String(data.stock ?? ""), "num"), soldTd, visTd, last);
+    };
+
+    const edit = () => {
+      tr.textContent = "";
+      const mk = (type, value) => {
+        const i = document.createElement("input");
+        i.type = type; i.value = value ?? ""; if (type === "number") i.step = "any";
+        return i;
+      };
+      const price = mk("number", data.price);
+      const summary = mk("text", data.summary);
+      const stock = mk("number", data.stock);
+      const wrap = (label, input) => { const l = document.createElement("label"); l.append(label + " ", input); l.style.display = "block"; return l; };
+      const box = document.createElement("td");
+      box.colSpan = 7;
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button"; saveBtn.className = "btn"; saveBtn.textContent = "저장";
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button"; cancelBtn.className = "btn ghost"; cancelBtn.textContent = "취소";
+      cancelBtn.addEventListener("click", () => { errorEl.textContent = ""; draw(); });
+      saveBtn.addEventListener("click", async () => {
+        const p = parseNumber(price.value);
+        const st = parseNumber(stock.value);
+        if (!Number.isFinite(p)) { errorEl.textContent = "price 는 숫자여야 합니다"; return; }
+        if (!Number.isInteger(st) || st < 0) { errorEl.textContent = "stock 은 0 이상 정수여야 합니다"; return; }
+        saveBtn.disabled = true;
+        const ok = await saveFields({ price: p, summary: summary.value, stock: st });
+        saveBtn.disabled = false;
+        if (ok) draw();
+      });
+      box.append(snap.id + " ", wrap("price", price), wrap("summary", summary), wrap("stock", stock), saveBtn, " ", cancelBtn, errorEl);
+      tr.append(box);
+    };
+
+    draw();
+    return tr;
+  }
+
+  async function loadProducts() {
+    listError.textContent = "";
+    try {
+      const snap = await getDocs(collection(db, "products"));
+      tbody.textContent = "";
+      snap.forEach(d => tbody.append(renderRow(d)));
+    } catch (e) {
+      productsLoaded = false;
+      listError.textContent = errText(e);
+    }
+  }
+
+  document.querySelector("#ad-new-btn").addEventListener("click", () => { newForm.hidden = !newForm.hidden; });
+
+  newForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    newError.textContent = "";
+    const price = parseNumber(document.querySelector("#new-price").value);
+    const stock = parseNumber(document.querySelector("#new-stock").value);
+    if (!Number.isFinite(price)) { newError.textContent = "price 는 숫자여야 합니다"; return; }
+    if (!Number.isInteger(stock) || stock < 0) { newError.textContent = "stock 은 0 이상 정수여야 합니다"; return; }
+    try {
+      await addDoc(collection(db, "products"), {
+        name: document.querySelector("#new-name").value,
+        price,
+        summary: document.querySelector("#new-summary").value,
+        stock,
+        isVisible: false,
+        createdAt: serverTimestamp()
+      });
+      newForm.reset();
+      newForm.hidden = true;
+      loadProducts();
+    } catch (e) {
+      newError.textContent = errText(e);
+    }
   });
 </script>
 </body>
