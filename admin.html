@@ -46,6 +46,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-tools select{flex:0 0 auto;padding:11px 38px 11px 18px;border:1px solid var(--line);border-radius:10px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;-webkit-appearance:none;appearance:none}
   @media (max-width:640px){.ad-tools select{flex:1 1 100%}}
   .ad-count{margin:0 0 8px;font-size:14px}
+  .ad-restore{display:none}
+  #ad-tbody[data-mode="deleted"] .ad-restore{display:inline-block}
+  #ad-tbody[data-mode="deleted"] .ad-takedown{display:none}
+  .ad-undo{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:12px;align-items:center;justify-content:center;padding:12px 16px;background:var(--ink);color:#fff;font-size:14px}
+  .ad-undo[hidden]{display:none}
+  .ad-undo .btn{padding:8px 16px;background:#fff;color:var(--ink)}
+  .ad-dialog{border:1px solid var(--line);border-radius:14px;padding:22px 24px;max-width:420px;background:var(--card);color:var(--ink)}
+  .ad-dialog p{margin:0 0 16px;font-size:15px;line-height:1.6;word-break:break-all}
+  .ad-dialog form{display:flex;gap:8px;justify-content:flex-end}
+  .ad-logs{margin-top:32px}
+  .ad-logs h2{margin:0 0 12px;font-size:20px}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
 </head>
@@ -90,6 +101,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <button class="btn on" type="button" data-filter="all">전체</button>
         <button class="btn ghost" type="button" data-filter="soldout">품절만</button>
         <button class="btn ghost" type="button" data-filter="hidden">숨김만</button>
+        <button class="btn ghost" type="button" data-filter="deleted">내린 상품</button>
         <input id="ad-search" type="search" placeholder="이름 검색">
         <select id="ad-sort">
           <option value="stock">재고 적은 순</option>
@@ -104,14 +116,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <tbody id="ad-tbody"></tbody>
         </table>
       </div>
+      <section class="ad-logs">
+        <h2>최근 활동</h2>
+        <button class="btn ghost" id="ad-logs-reload" type="button">새로 읽기</button>
+        <p id="ad-logs-error" class="ad-row-error"></p>
+        <div class="ad-table-wrap">
+          <table class="ad-table">
+            <thead><tr><th>시각</th><th>상품 이름</th><th>action</th><th>changedKeys</th></tr></thead>
+            <tbody id="ad-logs-body"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </section>
 </main>
+<dialog id="ad-confirm" class="ad-dialog">
+  <p id="ad-confirm-text"></p>
+  <form method="dialog">
+    <button class="btn" value="ok">내리기</button>
+    <button class="btn ghost" value="cancel">그만두기</button>
+  </form>
+</dialog>
+<div id="ad-undo" class="ad-undo" role="status" hidden>
+  <span id="ad-undo-text"></span>
+  <button class="btn" id="ad-undo-btn" type="button">되돌리기</button>
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-  import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteField, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 
@@ -246,6 +280,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return path;
   }
 
+  const confirmDialog = document.querySelector("#ad-confirm");
+  function askTakeDown(name) {
+    return new Promise(resolve => {
+      document.querySelector("#ad-confirm-text").textContent = "『" + name + "』을 가게에서 내립니다";
+      confirmDialog.returnValue = "";
+      confirmDialog.addEventListener("close", () => resolve(confirmDialog.returnValue === "ok"), { once: true });
+      confirmDialog.showModal();
+    });
+  }
+
+  const undoBar = document.querySelector("#ad-undo");
+  const undoText = document.querySelector("#ad-undo-text");
+  const undoBtn = document.querySelector("#ad-undo-btn");
+  let undoAction = null;
+  function showUndo(name, action) {
+    undoAction = action;
+    undoText.textContent = "『" + name + "』을 가게에서 내렸습니다";
+    undoBar.hidden = false;
+  }
+  function hideUndo() { undoAction = null; undoBar.hidden = true; }
+  undoBtn.addEventListener("click", async () => {
+    if (!undoAction) return;
+    undoBtn.disabled = true;
+    await undoAction();
+    undoBtn.disabled = false;
+  });
+
   function renderRow(snap) {
     const data = snap.data();
     const ref = doc(db, "products", snap.id);
@@ -266,6 +327,31 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         errorEl.textContent = errText(e);
         return false;
       }
+    };
+
+    // 내리기 · 되돌리기: 문서를 지우지 않고 deletedAt 과 isVisible 만 바꾼다
+    const takeDown = async () => {
+      if (!await askTakeDown(data.name ?? "")) return;
+      errorEl.textContent = "";
+      try {
+        await updateDoc(ref, { deletedAt: serverTimestamp(), isVisible: false, updatedAt: serverTimestamp() });
+        Object.assign(data, { deletedAt: new Date(), isVisible: false, updatedAt: new Date() });
+      } catch (e) { errorEl.textContent = errText(e); return; }
+      draw();
+      applyView();
+      showUndo(data.name ?? "", restore);
+    };
+    const restore = async () => {
+      errorEl.textContent = "";
+      try {
+        await updateDoc(ref, { deletedAt: deleteField(), isVisible: true, updatedAt: serverTimestamp() });
+        delete data.deletedAt;
+        Object.assign(data, { isVisible: true, updatedAt: new Date() });
+      } catch (e) { errorEl.textContent = errText(e); return false; }
+      draw();
+      applyView();
+      hideUndo();
+      return true;
     };
 
     const draw = () => {
@@ -297,8 +383,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       editBtn.className = "btn ghost";
       editBtn.textContent = "고치기";
       editBtn.addEventListener("click", () => edit());
+      const takeBtn = document.createElement("button");
+      takeBtn.type = "button";
+      takeBtn.className = "btn ghost ad-takedown";
+      takeBtn.textContent = "내리기";
+      takeBtn.hidden = !!data.deletedAt;
+      takeBtn.addEventListener("click", () => takeDown());
+      const restoreBtn = document.createElement("button");
+      restoreBtn.type = "button";
+      restoreBtn.className = "btn ghost ad-restore";
+      restoreBtn.textContent = "되돌리기";
+      restoreBtn.addEventListener("click", () => restore());
       const last = document.createElement("td");
-      last.append(editBtn, errorEl);
+      last.append(editBtn, " ", takeBtn, " ", restoreBtn, errorEl);
       const soldTd = document.createElement("td"); soldTd.append(soldOut);
       const visTd = document.createElement("td"); visTd.append(visible);
       const imgTd = document.createElement("td");
@@ -364,7 +461,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     };
 
     draw();
-    tr.productData = data;   // 필터 · 검색 · 정렬이 지금 값을 읽는 용도
+    tr.productData = data;
+    tr.productId = snap.id;   // 필터 · 검색 · 정렬이 지금 값을 읽는 용도
     return tr;
   }
 
@@ -381,6 +479,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const d = tr.productData;
       if (filterMode === "soldout" && d.stock !== 0) return false;
       if (filterMode === "hidden" && d.isVisible !== false) return false;
+      if (filterMode === "deleted" && !d.deletedAt) return false;
       return !q || String(d.name ?? "").toLowerCase().includes(q);
     });
     const stockOf = tr => (typeof tr.productData.stock === "number" ? tr.productData.stock : Infinity);
@@ -396,6 +495,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       stock: (a, b) => stockOf(a) - stockOf(b)
     };
     shown.sort(by[sortSelect.value] || by.stock);
+    tbody.dataset.mode = filterMode;
     rows.forEach(tr => { tr.hidden = !shown.includes(tr); });
     shown.forEach(tr => tbody.append(tr));   // 순서만 바꾼다
     countEl.textContent = "지금 보이는 상품 " + shown.length + "개 / 전체 " + rows.length + "개";
@@ -412,6 +512,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   searchInput.addEventListener("input", applyView);
   sortSelect.addEventListener("change", applyView);
 
+  // ---- 최근 활동: 함수가 남기는 adminLogs 를 읽기만 한다 ----
+  const logsBody = document.querySelector("#ad-logs-body");
+  const logsError = document.querySelector("#ad-logs-error");
+  async function loadLogs() {
+    logsError.textContent = "";
+    try {
+      const snap = await getDocs(query(collection(db, "adminLogs"), orderBy("at", "desc"), limit(10)));
+      logsBody.textContent = "";
+      snap.forEach(d => {
+        const l = d.data();
+        const found = rows.find(tr => tr.productId === l.productId);
+        const when = l.at && typeof l.at.toDate === "function"
+          ? l.at.toDate().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false }) : "";
+        const tr = document.createElement("tr");
+        tr.append(cell(when), cell(found ? (found.productData.name ?? "") : (l.productId ?? "")),
+          cell(l.action ?? ""), cell(Array.isArray(l.changedKeys) ? l.changedKeys.join(", ") : ""));
+        logsBody.append(tr);
+      });
+    } catch (e) { logsError.textContent = errText(e); }
+  }
+  document.querySelector("#ad-logs-reload").addEventListener("click", loadLogs);
+
   async function loadProducts() {
     listError.textContent = "";
     try {
@@ -419,6 +541,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       tbody.textContent = "";
       rows = snap.docs.map(renderRow);
       applyView();
+      loadLogs();
     } catch (e) {
       productsLoaded = false;
       listError.textContent = errText(e);
