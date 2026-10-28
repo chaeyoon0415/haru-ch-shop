@@ -36,9 +36,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-error{margin:12px 0 0;color:#b42318;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
   .ad-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
   .ad-progress{margin:4px 0 0;font-size:13px}
-  .ad-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
-  .ad-tools input,.ad-tools select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
-  .ad-tools .btn.on{outline:2px solid currentColor}
+  .ad-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%;margin:12px 0}
+  .ad-tools .btn{padding:11px 20px}
+  .ad-tools .btn.on{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)}
+  .ad-tools input{flex:1 1 180px;min-width:0;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+  .ad-tools select{flex:0 0 auto;padding:11px 38px 11px 18px;border:1px solid var(--line);border-radius:10px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;-webkit-appearance:none;appearance:none}
+  @media (max-width:640px){.ad-tools select{flex:1 1 100%}}
   .ad-count{margin:0 0 8px;font-size:14px}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
