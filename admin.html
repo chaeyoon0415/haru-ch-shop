@@ -34,6 +34,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-table td.num{text-align:right;font-variant-numeric:tabular-nums}
   .ad-row-error{margin:6px 0 0;color:#b42318;white-space:pre-wrap;word-break:break-all}
   .ad-error{margin:12px 0 0;color:#b42318;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all}
+  .ad-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+  .ad-progress{margin:4px 0 0;font-size:13px}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 </style>
 </head>
@@ -68,13 +70,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <label>price <input id="new-price" type="number" step="any" required></label>
         <label>summary <input id="new-summary" type="text"></label>
         <label>stock <input id="new-stock" type="number" step="1" required></label>
+        <label>사진 <input id="new-photo" type="file" accept="image/*"></label>
+        <p id="new-progress" class="ad-progress"></p>
         <div><button class="btn" type="submit">저장</button></div>
         <p id="new-error" class="ad-row-error"></p>
       </form>
       <p id="ad-products-error" class="ad-row-error"></p>
       <div class="ad-table-wrap">
         <table class="ad-table">
-          <thead><tr><th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th></tr></thead>
+          <thead><tr><th>사진</th><th>문서 ID</th><th>name</th><th>price</th><th>stock</th><th>품절</th><th>노출</th><th></th></tr></thead>
           <tbody id="ad-tbody"></tbody>
         </table>
       </div>
@@ -86,6 +90,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 
   const firebaseConfig = {
@@ -102,6 +107,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const grantOwnerRole = httpsCallable(getFunctions(app, "us-central1"), "grantOwnerRole");
 
   const db = getFirestore(app);
+  const storage = getStorage(app);   // 버킷은 firebaseConfig 의 storageBucket
   const loading = document.querySelector("#ad-loading");
   const loginNeeded = document.querySelector("#ad-login");
   const main = document.querySelector("#ad-main");
@@ -196,12 +202,37 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     return trimmed === "" ? NaN : Number(trimmed);
   }
 
+  // 사진 검사 · 올리기. 경로 규칙은 products/문서 ID/main.jpg, 고른 파일 그대로 올린다
+  function photoProblem(file) {
+    if (!file.type.startsWith("image/")) return "이미지 파일만 올릴 수 있습니다";
+    if (file.size >= 5 * 1024 * 1024) return "5MB 넘는 사진은 올릴 수 없습니다";
+    return "";
+  }
+
+  async function uploadPhoto(id, file, progressEl) {
+    const path = "products/" + id + "/main.jpg";
+    progressEl.textContent = "올리는 중 … 0%";
+    try {
+      const task = uploadBytesResumable(storageRef(storage, path), file);
+      task.on("state_changed", s => {
+        progressEl.textContent = "올리는 중 … " + Math.floor(s.bytesTransferred / s.totalBytes * 100) + "%";
+      });
+      await task;
+    } finally {
+      progressEl.textContent = "";
+    }
+    return path;
+  }
+
   function renderRow(snap) {
     const data = snap.data();
     const ref = doc(db, "products", snap.id);
     const tr = document.createElement("tr");
     const errorEl = document.createElement("p");
     errorEl.className = "ad-row-error";
+
+    const progressEl = document.createElement("p");
+    progressEl.className = "ad-progress";
 
     const saveFields = async (fields) => {
       errorEl.textContent = "";
@@ -248,7 +279,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       last.append(editBtn, errorEl);
       const soldTd = document.createElement("td"); soldTd.append(soldOut);
       const visTd = document.createElement("td"); visTd.append(visible);
-      tr.append(cell(snap.id, "id"), cell(data.name ?? ""), cell(String(data.price ?? ""), "num"),
+      const imgTd = document.createElement("td");
+      if (data.imagePath) {
+        const img = document.createElement("img");
+        img.className = "ad-thumb";
+        img.alt = data.name ?? "";
+        getDownloadURL(storageRef(storage, data.imagePath))
+          .then(url => { img.src = url; })
+          .catch(e => { errorEl.textContent = errText(e); });
+        imgTd.append(img);
+      }
+      tr.append(imgTd, cell(snap.id, "id"), cell(data.name ?? ""), cell(String(data.price ?? ""), "num"),
         cell(String(data.stock ?? ""), "num"), soldTd, visTd, last);
     };
 
@@ -262,9 +303,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       const price = mk("number", data.price);
       const summary = mk("text", data.summary);
       const stock = mk("number", data.stock);
+      const photo = mk("file");
+      photo.accept = "image/*";
       const wrap = (label, input) => { const l = document.createElement("label"); l.append(label + " ", input); l.style.display = "block"; return l; };
       const box = document.createElement("td");
-      box.colSpan = 7;
+      box.colSpan = 8;
       const saveBtn = document.createElement("button");
       saveBtn.type = "button"; saveBtn.className = "btn"; saveBtn.textContent = "저장";
       const cancelBtn = document.createElement("button");
@@ -275,12 +318,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const st = parseNumber(stock.value);
         if (!Number.isFinite(p)) { errorEl.textContent = "price 는 숫자여야 합니다"; return; }
         if (!Number.isInteger(st) || st < 0) { errorEl.textContent = "stock 은 0 이상 정수여야 합니다"; return; }
+        const file = photo.files[0];
+        if (file) {
+          const problem = photoProblem(file);
+          if (problem) { errorEl.textContent = problem; return; }
+        }
         saveBtn.disabled = true;
-        const ok = await saveFields({ price: p, summary: summary.value, stock: st });
+        let ok = await saveFields({ price: p, summary: summary.value, stock: st });
+        if (ok && file) {
+          try {
+            const path = await uploadPhoto(snap.id, file, progressEl);
+            ok = await saveFields({ imagePath: path });
+          } catch (e) {
+            errorEl.textContent = errText(e);
+            ok = false;
+          }
+        }
         saveBtn.disabled = false;
         if (ok) draw();
       });
-      box.append(snap.id + " ", wrap("price", price), wrap("summary", summary), wrap("stock", stock), saveBtn, " ", cancelBtn, errorEl);
+      box.append(snap.id + " ", wrap("price", price), wrap("summary", summary), wrap("stock", stock), wrap("사진", photo), saveBtn, " ", cancelBtn, progressEl, errorEl);
       tr.append(box);
     };
 
@@ -302,27 +359,44 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
   document.querySelector("#ad-new-btn").addEventListener("click", () => { newForm.hidden = !newForm.hidden; });
 
+  const newProgress = document.querySelector("#new-progress");
+  let pendingId = null;   // 문서는 만들어졌는데 사진 올리기가 실패한 경우, 다시 시도할 때 같은 문서를 쓴다
+
   newForm.addEventListener("submit", async event => {
     event.preventDefault();
     newError.textContent = "";
+    const file = document.querySelector("#new-photo").files[0];
+    if (file) {
+      const problem = photoProblem(file);
+      if (problem) { newError.textContent = problem; return; }
+    }
     const price = parseNumber(document.querySelector("#new-price").value);
     const stock = parseNumber(document.querySelector("#new-stock").value);
     if (!Number.isFinite(price)) { newError.textContent = "price 는 숫자여야 합니다"; return; }
     if (!Number.isInteger(stock) || stock < 0) { newError.textContent = "stock 은 0 이상 정수여야 합니다"; return; }
     try {
-      await addDoc(collection(db, "products"), {
-        name: document.querySelector("#new-name").value,
-        price,
-        summary: document.querySelector("#new-summary").value,
-        stock,
-        isVisible: false,
-        createdAt: serverTimestamp()
-      });
+      if (!pendingId) {
+        const created = await addDoc(collection(db, "products"), {
+          name: document.querySelector("#new-name").value,
+          price,
+          summary: document.querySelector("#new-summary").value,
+          stock,
+          isVisible: false,
+          createdAt: serverTimestamp()
+        });
+        pendingId = created.id;
+      }
+      if (file) {
+        const path = await uploadPhoto(pendingId, file, newProgress);
+        await updateDoc(doc(db, "products", pendingId), { imagePath: path });
+      }
+      pendingId = null;
       newForm.reset();
       newForm.hidden = true;
       loadProducts();
     } catch (e) {
       newError.textContent = errText(e);
+      if (pendingId) loadProducts();
     }
   });
 </script>
