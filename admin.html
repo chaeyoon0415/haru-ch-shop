@@ -27,6 +27,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-form{display:grid;gap:8px;margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
   .ad-form label{display:grid;gap:4px;font-size:13px;font-weight:700}
   .ad-form input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  .ad-form input[type=file]{padding:6px;border-radius:10px;background:var(--card);color:var(--ink);font-weight:400}
+  .ad-form input[type=file]::file-selector-button{margin-right:12px;padding:9px 18px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+  .ad-form input[type=file]::file-selector-button:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .ad-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
   .ad-table{width:100%;border-collapse:collapse;font-size:13px}
   .ad-table th,.ad-table td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
