@@ -64,6 +64,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-logs{margin-top:32px}
   .ad-logs h2{margin:0 0 12px;font-size:20px}
   .ad-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .ad-tabs{display:flex;gap:8px;margin-top:32px}
+  .ad-tabs .btn.on{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)}
+  .ad-orders{margin-top:16px}
+  .ad-orders h2{margin:0 0 12px;font-size:20px}
+  .ad-orders tr.ad-order-row{cursor:pointer}
+  .ad-orders tr.ad-order-row:hover{background:var(--line)}
+  .ad-detail{margin:16px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:14px;line-height:1.7}
+  .ad-detail dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0 0 12px}
+  .ad-detail dt{font-weight:700}
+  .ad-detail dd{margin:0;word-break:break-all;white-space:pre-wrap}
+  .ad-more{margin:12px 0}
 </style>
 </head>
 <body>
@@ -88,6 +99,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p id="ad-error" class="ad-error" role="alert"></p>
     <div class="ad-actions">
       <button class="btn ghost" id="ad-recheck" type="button">다시 확인</button>
+    </div>
+    <div id="ad-tabs" class="ad-tabs" hidden>
+      <button class="btn on" type="button" data-tab="products">상품</button>
+      <button class="btn ghost" type="button" data-tab="orders">주문</button>
     </div>
     <section id="ad-products" class="ad-products" hidden>
       <h2>상품</h2>
@@ -134,12 +149,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </section>
     </section>
+    <section id="ad-orders" class="ad-orders" hidden>
+      <h2>주문</h2>
+      <div class="ad-tools">
+        <select id="ad-order-status">
+          <option value="">전체</option>
+          <option value="paid">paid</option>
+          <option value="preparing">preparing</option>
+          <option value="shipped">shipped</option>
+          <option value="delivered">delivered</option>
+          <option value="canceled">canceled</option>
+        </select>
+      </div>
+      <p id="ad-orders-error" class="ad-row-error"></p>
+      <div class="ad-table-wrap">
+        <table class="ad-table">
+          <thead><tr><th>주문 번호</th><th>금액</th><th>상태</th><th>주문 시각</th></tr></thead>
+          <tbody id="ad-orders-body"></tbody>
+        </table>
+      </div>
+      <div class="ad-more"><button class="btn ghost" id="ad-orders-more" type="button" hidden>더 보기</button></div>
+      <div id="ad-order-detail" class="ad-detail" hidden></div>
+    </section>
   </section>
 </main>
 <dialog id="ad-confirm" class="ad-dialog">
   <p id="ad-confirm-text"></p>
   <form method="dialog">
     <button class="btn" value="ok">내리기</button>
+    <button class="btn ghost" value="cancel">그만두기</button>
+  </form>
+</dialog>
+<dialog id="ad-order-confirm" class="ad-dialog">
+  <p id="ad-order-confirm-text"></p>
+  <form method="dialog">
+    <button class="btn" value="ok">바꾸기</button>
     <button class="btn ghost" value="cancel">그만두기</button>
   </form>
 </dialog>
@@ -151,7 +195,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-  import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteField, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteField, query, where, orderBy, limit, startAfter, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
   import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
   import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 
@@ -182,6 +226,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const recheckBtn = document.querySelector("#ad-recheck");
 
   const productsBox = document.querySelector("#ad-products");
+  const ordersBox = document.querySelector("#ad-orders");
+  const tabsBox = document.querySelector("#ad-tabs");
+  let currentTab = "products";
   let productsLoaded = false;
   const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
 
@@ -197,7 +244,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     const isStaff = role === "staff" || role === "admin";
     result.textContent = isStaff ? "관리자: " + role : "권한이 없습니다";
     grantBtn.hidden = isStaff;
-    productsBox.hidden = !isStaff;
+    tabsBox.hidden = !isStaff;
+    productsBox.hidden = !isStaff || currentTab !== "products";
+    ordersBox.hidden = !isStaff || currentTab !== "orders";
     if (isStaff && !productsLoaded) { productsLoaded = true; loadProducts(); }
     info.hidden = !isStaff;
     emailEl.textContent = user.email || "";
@@ -598,6 +647,153 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       if (pendingId) loadProducts();
     }
   });
+
+  // ---- 주문 탭: orders 를 읽고, status · statusUpdatedAt 두 필드만 고친다 ----
+  const PAGE = 20;
+  const NEXT = { paid: ["preparing", "포장 시작"], preparing: ["shipped", "배송 시작"], shipped: ["delivered", "배송 완료"] };
+  const ordersBody = document.querySelector("#ad-orders-body");
+  const ordersError = document.querySelector("#ad-orders-error");
+  const moreBtn = document.querySelector("#ad-orders-more");
+  const statusSelect = document.querySelector("#ad-order-status");
+  const detailBox = document.querySelector("#ad-order-detail");
+  const orderConfirm = document.querySelector("#ad-order-confirm");
+  let ordersLoaded = false;
+  let ordersCursor = null;
+  let ordersToken = 0;   // 상태를 바꾸는 사이 늦게 온 응답을 버리는 용도
+  const orderRows = new Map();   // 문서 ID → 목록 줄
+
+  const fmtTime = v => (v && typeof v.toDate === "function"
+    ? v.toDate().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour12: false }) : "");
+  const showFail = (box, text, e) => {
+    console.error(e);
+    box.textContent = text;
+  };
+  const fmtItem = it => (it && typeof it === "object"
+    ? Object.entries(it).map(([k, v]) => k + ": " + (typeof v === "object" ? JSON.stringify(v) : v)).join(", ")
+    : String(it));
+
+  function orderRow(snap) {
+    const d = snap.data();
+    const tr = document.createElement("tr");
+    tr.className = "ad-order-row";
+    tr.append(cell(snap.id, "id"), cell(String(d.totalPrice ?? ""), "num"), cell(d.status ?? ""), cell(fmtTime(d.createdAt)));
+    tr.addEventListener("click", () => showDetail(snap.id));
+    orderRows.set(snap.id, tr);
+    return tr;
+  }
+
+  async function loadOrders(reset) {
+    const token = reset ? ++ordersToken : ordersToken;
+    ordersError.textContent = "";
+    moreBtn.disabled = true;
+    if (reset) {
+      ordersBody.textContent = "";
+      orderRows.clear();
+      ordersCursor = null;
+      detailBox.hidden = true;
+      moreBtn.hidden = true;
+    }
+    try {
+      const parts = [collection(db, "orders")];
+      if (statusSelect.value) parts.push(where("status", "==", statusSelect.value));
+      parts.push(orderBy("createdAt", "desc"));
+      if (ordersCursor) parts.push(startAfter(ordersCursor));
+      parts.push(limit(PAGE));
+      const snap = await getDocs(query(...parts));
+      if (token !== ordersToken) return;
+      snap.docs.forEach(s => ordersBody.append(orderRow(s)));
+      if (snap.docs.length) ordersCursor = snap.docs[snap.docs.length - 1];
+      moreBtn.hidden = snap.docs.length < PAGE;
+    } catch (e) {
+      if (token === ordersToken) showFail(ordersError, "주문을 불러오지 못했습니다 (브라우저 콘솔을 확인해 주세요)", e);
+    } finally {
+      if (token === ordersToken) moreBtn.disabled = false;
+    }
+  }
+
+  function askOrderChange(id, nextStatus) {
+    return new Promise(resolve => {
+      document.querySelector("#ad-order-confirm-text").textContent = "주문 " + id + "를 " + nextStatus + "로 바꿉니다";
+      orderConfirm.returnValue = "";
+      orderConfirm.addEventListener("close", () => resolve(orderConfirm.returnValue === "ok"), { once: true });
+      orderConfirm.showModal();
+    });
+  }
+
+  async function showDetail(id) {
+    detailBox.hidden = false;
+    detailBox.textContent = "불러오는 중…";
+    try {
+      const snap = await getDoc(doc(db, "orders", id));
+      if (!snap.exists()) throw new Error("주문 문서가 없습니다: " + id);
+      renderDetail(snap);
+    } catch (e) {
+      detailBox.textContent = "";
+      const p = document.createElement("p");
+      p.className = "ad-row-error";
+      showFail(p, "주문을 불러오지 못했습니다 (브라우저 콘솔을 확인해 주세요)", e);
+      detailBox.append(p);
+    }
+  }
+
+  function renderDetail(snap) {
+    const d = snap.data();
+    const lines = [["주문 번호", snap.id],
+      ["산 것", Array.isArray(d.items) ? d.items.map(fmtItem).join("\n") : ""],
+      ["금액", String(d.totalPrice ?? "")],
+      ["상태", d.status ?? ""],
+      ["받은 시각", fmtTime(d.receivedAt)],
+      ["처리 표시", d.processStatus ?? ""]];
+    if (d.processError) lines.push(["처리 오류", d.processError]);
+    if (d.mailStatus) lines.push(["메일 표시", d.mailStatus]);
+    if (d.statusUpdatedAt) lines.push(["상태를 바꾼 시각", fmtTime(d.statusUpdatedAt)]);
+    const dl = document.createElement("dl");
+    lines.forEach(([k, v]) => {
+      const dt = document.createElement("dt"); dt.textContent = k;
+      const dd = document.createElement("dd"); dd.textContent = v;
+      dl.append(dt, dd);
+    });
+    detailBox.textContent = "";
+    detailBox.append(dl);
+    const row = orderRows.get(snap.id);   // 목록 줄의 상태도 새 값으로
+    if (row) row.children[2].textContent = d.status ?? "";
+    const next = Object.hasOwn(NEXT, d.status) ? NEXT[d.status] : null;
+    if (!next) return;
+    const errorEl = document.createElement("p");
+    errorEl.className = "ad-row-error";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn";
+    btn.textContent = next[1];
+    btn.addEventListener("click", async () => {
+      if (!await askOrderChange(snap.id, next[0])) return;
+      btn.disabled = true;
+      errorEl.textContent = "";
+      try {
+        await updateDoc(doc(db, "orders", snap.id), { status: next[0], statusUpdatedAt: serverTimestamp() });
+      } catch (e) {
+        showFail(errorEl, "상태를 바꾸지 못했습니다 (브라우저 콘솔을 확인해 주세요)", e);
+        btn.disabled = false;
+        return;
+      }
+      await showDetail(snap.id);
+    });
+    detailBox.append(btn, errorEl);
+  }
+
+  moreBtn.addEventListener("click", () => loadOrders(false));
+  statusSelect.addEventListener("change", () => loadOrders(true));
+
+  document.querySelectorAll("[data-tab]").forEach(btn => btn.addEventListener("click", () => {
+    currentTab = btn.dataset.tab;
+    document.querySelectorAll("[data-tab]").forEach(b => {
+      b.classList.toggle("on", b === btn);
+      b.classList.toggle("ghost", b !== btn);
+    });
+    productsBox.hidden = currentTab !== "products";
+    ordersBox.hidden = currentTab !== "orders";
+    if (currentTab === "orders" && !ordersLoaded) { ordersLoaded = true; loadOrders(true); }
+  }));
 </script>
 </body>
 </html>
