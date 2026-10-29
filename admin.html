@@ -78,7 +78,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-sales{margin-top:16px}
   .ad-sales h2{margin:0 0 12px;font-size:20px}
   .ad-sales-note{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 12px;font-size:14px;line-height:1.6}
-  .ad-chart{position:relative;height:320px;margin:0 0 16px}
+  .ad-chart{position:relative;height:320px;margin:0 0 16px;padding:16px 16px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .ad-sales-note{color:var(--sub)}
+  #ad-sales-asof{color:var(--ink);font-weight:700}
+  #ad-sales-sum{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:var(--accent-light);color:var(--accent);font-weight:700}
+  .ad-sales .ad-table th{background:var(--accent-light);color:var(--sub);font-size:12px;font-weight:700;white-space:nowrap}
+  .ad-sales .ad-table td{font-variant-numeric:tabular-nums}
+  .ad-sales .ad-table tbody tr:last-child td{border-bottom:0}
+  .ad-sales .ad-table tbody tr:hover{background:var(--bg)}
+  .ad-sales .ad-table tr.ad-none td{color:var(--sub)}
 </style>
 </head>
 <body>
@@ -852,6 +860,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const st = stats[i];
         const tr = document.createElement("tr");
         if (!st) {
+          tr.className = "ad-none";
           tr.append(cell(day.label), cell(NONE), cell(NONE), cell(NONE));
         } else {
           const count = st.canceledCount === undefined ? String(st.orderCount ?? "") : (st.orderCount ?? "") + " (취소 " + st.canceledCount + ")";
@@ -877,13 +886,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         + sumCount.toLocaleString("ko-KR") + "건 (" + (missing ? "집계 없는 날 " + missing + "일은 빼고 더함" : "집계 없는 날 없음") + ")";
 
       if (salesChart) salesChart.destroy();
+      const css = getComputedStyle(document.documentElement);
+      const tone = n => css.getPropertyValue(n).trim();
+      const font = { family: getComputedStyle(document.body).fontFamily, size: 12 };
       salesChart = new Chart(document.querySelector("#ad-sales-chart"), {
         type: "bar",
         data: {
           labels: days.map((day, i) => (stats[i] ? day.label : [day.label, NONE])),
-          datasets: [{ label: "매출", data: stats.map(st => (st ? Number(st.totalSales) || 0 : null)), backgroundColor: "#2f6fed" }]
+          datasets: [{ label: "매출", data: stats.map(st => (st ? Number(st.totalSales) || 0 : null)), backgroundColor: tone("--accent"), hoverBackgroundColor: tone("--ink"), borderRadius: 6, maxBarThickness: 44 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: tone("--ink"), titleFont: font, bodyFont: font, padding: 10, cornerRadius: 8, displayColors: false,
+              callbacks: { label: c => Number(c.parsed.y).toLocaleString("ko-KR") + "원" } }
+          },
+          scales: {
+            x: { grid: { display: false }, border: { color: tone("--line") }, ticks: { color: tone("--sub"), font } },
+            y: { beginAtZero: true, border: { display: false }, grid: { color: tone("--line") },
+              ticks: { color: tone("--sub"), font, callback: v => Number(v).toLocaleString("ko-KR") } }
+          }
+        }
       });
       salesLoaded = true;
     } catch (e) {
