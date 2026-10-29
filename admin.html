@@ -75,6 +75,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .ad-detail dt{font-weight:700}
   .ad-detail dd{margin:0;word-break:break-all;white-space:pre-wrap}
   .ad-more{margin:12px 0}
+  .ad-sales{margin-top:16px}
+  .ad-sales h2{margin:0 0 12px;font-size:20px}
+  .ad-sales-note{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0 0 12px;font-size:14px;line-height:1.6}
+  .ad-chart{position:relative;height:320px;margin:0 0 16px}
 </style>
 </head>
 <body>
@@ -103,6 +107,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="ad-tabs" class="ad-tabs" hidden>
       <button class="btn on" type="button" data-tab="products">상품</button>
       <button class="btn ghost" type="button" data-tab="orders">주문</button>
+      <button class="btn ghost" type="button" data-tab="sales">매출</button>
     </div>
     <section id="ad-products" class="ad-products" hidden>
       <h2>상품</h2>
@@ -171,6 +176,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="ad-more"><button class="btn ghost" id="ad-orders-more" type="button" hidden>더 보기</button></div>
       <div id="ad-order-detail" class="ad-detail" hidden></div>
     </section>
+    <section id="ad-sales" class="ad-sales" hidden>
+      <h2>매출</h2>
+      <p class="ad-sales-note"><span id="ad-sales-asof"></span><span id="ad-sales-counted"></span></p>
+      <p id="ad-sales-error" class="ad-row-error"></p>
+      <div class="ad-chart"><canvas id="ad-sales-chart" aria-label="최근 7일 매출 막대 차트" role="img"></canvas></div>
+      <div class="ad-table-wrap">
+        <table class="ad-table">
+          <thead><tr><th>날짜</th><th>건수</th><th>매출</th><th>센 시각</th></tr></thead>
+          <tbody id="ad-sales-body"></tbody>
+        </table>
+      </div>
+    </section>
   </section>
 </main>
 <dialog id="ad-confirm" class="ad-dialog">
@@ -192,6 +209,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <button class="btn" id="ad-undo-btn" type="button">되돌리기</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
@@ -228,6 +246,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   const productsBox = document.querySelector("#ad-products");
   const ordersBox = document.querySelector("#ad-orders");
   const tabsBox = document.querySelector("#ad-tabs");
+  const salesBox = document.querySelector("#ad-sales");
   let currentTab = "products";
   let productsLoaded = false;
   const errText = e => (e && e.code ? e.code + ": " : "") + (e && e.message ? e.message : String(e));
@@ -247,6 +266,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     tabsBox.hidden = !isStaff;
     productsBox.hidden = !isStaff || currentTab !== "products";
     ordersBox.hidden = !isStaff || currentTab !== "orders";
+    salesBox.hidden = !isStaff || currentTab !== "sales";
     if (isStaff && !productsLoaded) { productsLoaded = true; loadProducts(); }
     info.hidden = !isStaff;
     emailEl.textContent = user.email || "";
@@ -792,8 +812,75 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
     productsBox.hidden = currentTab !== "products";
     ordersBox.hidden = currentTab !== "orders";
+    salesBox.hidden = currentTab !== "sales";
     if (currentTab === "orders" && !ordersLoaded) { ordersLoaded = true; loadOrders(true); }
+    if (currentTab === "sales" && !salesLoaded) loadSales();
   }));
+
+  // ---- 매출 탭: 함수가 매일 적는 dailyStats 만 읽는다 (orders 는 읽지 않는다) ----
+  const DAYS = 7;
+  const NONE = "집계 없음";
+  const salesError = document.querySelector("#ad-sales-error");
+  const salesBody = document.querySelector("#ad-sales-body");
+  let salesLoaded = false;
+  let salesChart = null;
+
+  // 한국 날짜로 어제부터 거꾸로 7일, 오래된 날부터. [{ id: "20261028", label: "2026-10-28" }, ...]
+  function lastDays() {
+    const seoul = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const y = seoul.getUTCFullYear(), m = seoul.getUTCMonth(), d = seoul.getUTCDate();
+    const days = [];
+    for (let i = DAYS; i >= 1; i--) {
+      const t = new Date(Date.UTC(y, m, d - i));
+      const yy = String(t.getUTCFullYear()), mm = String(t.getUTCMonth() + 1).padStart(2, "0"), dd = String(t.getUTCDate()).padStart(2, "0");
+      days.push({ id: yy + mm + dd, label: yy + "-" + mm + "-" + dd });
+    }
+    return days;
+  }
+
+  async function loadSales() {
+    salesError.textContent = "";
+    try {
+      if (typeof Chart === "undefined") throw new Error("차트 도구를 불러오지 못했습니다");
+      const days = lastDays();
+      const snaps = await Promise.all(days.map(day => getDoc(doc(db, "dailyStats", day.id))));
+      const stats = snaps.map(s => (s.exists() ? s.data() : null));
+
+      salesBody.textContent = "";
+      days.forEach((day, i) => {
+        const st = stats[i];
+        const tr = document.createElement("tr");
+        if (!st) {
+          tr.append(cell(day.label), cell(NONE), cell(NONE), cell(NONE));
+        } else {
+          const count = st.canceledCount === undefined ? String(st.orderCount ?? "") : (st.orderCount ?? "") + " (취소 " + st.canceledCount + ")";
+          tr.append(cell(day.label), cell(count, "num"), cell(String(st.totalSales ?? ""), "num"), cell(fmtTime(st.countedAt)));
+        }
+        salesBody.append(tr);
+      });
+
+      let latest = -1;
+      stats.forEach((st, i) => { if (st) latest = i; });
+      document.querySelector("#ad-sales-asof").textContent = latest < 0
+        ? "집계 문서가 없습니다 - 매일 00:05에 전날을 셉니다"
+        : days[latest].label + "까지의 매출입니다 - 매일 00:05에 전날을 셉니다";
+      document.querySelector("#ad-sales-counted").textContent = latest < 0 ? ""
+        : "마지막으로 센 시각 : " + fmtTime(stats[latest].countedAt);
+
+      if (salesChart) salesChart.destroy();
+      salesChart = new Chart(document.querySelector("#ad-sales-chart"), {
+        type: "bar",
+        data: {
+          labels: days.map((day, i) => (stats[i] ? day.label : [day.label, NONE])),
+          datasets: [{ label: "매출", data: stats.map(st => (st ? Number(st.totalSales) || 0 : null)), backgroundColor: "#2f6fed" }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+      salesLoaded = true;
+    } catch (e) {
+      showFail(salesError, "매출을 불러오지 못했습니다 (브라우저 콘솔을 확인해 주세요)", e);
+    }
+  }
 </script>
 </body>
 </html>
