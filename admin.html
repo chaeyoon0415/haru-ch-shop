@@ -181,6 +181,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="ad-sales-note"><span id="ad-sales-asof"></span><span id="ad-sales-counted"></span></p>
       <p id="ad-sales-error" class="ad-row-error"></p>
       <div class="ad-chart"><canvas id="ad-sales-chart" aria-label="최근 7일 매출 막대 차트" role="img"></canvas></div>
+      <p id="ad-sales-sum" class="ad-sales-note"></p>
       <div class="ad-table-wrap">
         <table class="ad-table">
           <thead><tr><th>날짜</th><th>건수</th><th>매출</th><th>센 시각</th></tr></thead>
@@ -866,6 +867,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         : days[latest].label + "까지의 매출입니다 - 매일 00:05에 전날을 셉니다";
       document.querySelector("#ad-sales-counted").textContent = latest < 0 ? ""
         : "마지막으로 센 시각 : " + fmtTime(stats[latest].countedAt);
+
+      // 이미 읽어 둔 stats 일곱 칸만 더한다 (문서가 없는 날은 빼고)
+      const have = stats.filter(Boolean);
+      const sumSales = have.reduce((n, st) => n + (Number(st.totalSales) || 0), 0);
+      const sumCount = have.reduce((n, st) => n + (Number(st.orderCount) || 0), 0);
+      const missing = stats.length - have.length;
+      document.querySelector("#ad-sales-sum").textContent = "최근 7일 합계 " + sumSales.toLocaleString("ko-KR") + "원 - 주문 "
+        + sumCount.toLocaleString("ko-KR") + "건 (" + (missing ? "집계 없는 날 " + missing + "일은 빼고 더함" : "집계 없는 날 없음") + ")";
 
       if (salesChart) salesChart.destroy();
       salesChart = new Chart(document.querySelector("#ad-sales-chart"), {
